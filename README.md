@@ -1,2 +1,2 @@
-# approximate-bayesian-computation
-Part III essay.
+# Approximate Bayesian Computation
+Part III essay (Lent 2020). Supervised by Dr. Sergio Bacallado.
