@@ -39,3 +39,4 @@ lines(samples_density_mcmc$x, samples_density_mcmc$y, col = "cyan")
 plot(cumsum(samples_mcmc)/1:length(samples_mcmc))
 acf(samples_mcmcs)
 
+libs <- c("Rcpp", "RcppEigen", "doParallel", "doRNG", "foreach", "ggplot2", "ggthemes", "dplyr", "reshape2", "BH", "transport")
