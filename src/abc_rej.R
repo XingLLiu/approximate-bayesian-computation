@@ -1,4 +1,7 @@
-abc_sample <- function(N, epsilon, y, alpha, beta, kernel="identity", summary_stat="original"){
+source("src/metrics.R")
+
+# abc_sample <- function(N, epsilon, y, alpha, beta, kernel="identity", summary_stat="original"){
+soft_abc <- function(N, epsilon, y, alpha, beta, kernel="uniform", summary_stat="original"){
 
     # initialize sample vector
     samples <- rep(0, N)
