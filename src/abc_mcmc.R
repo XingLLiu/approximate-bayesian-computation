@@ -1,4 +1,4 @@
-abc_mcmc_sampler <- function(N, epsilon, y, kernel="identity", summary_stat="original", burnin=500, thinning=3, alpha, beta){
+abc_mcmc_sampler <- function(N, epsilon, y, kernel="identity", sumstat="original", burnin=500, thinning=3, alpha, beta){
 #'
 #' thinning = [int] save 1 sample per "thinning" ones
 #' 
@@ -6,7 +6,7 @@ abc_mcmc_sampler <- function(N, epsilon, y, kernel="identity", summary_stat="ori
     N_total <- (N - 1) * thinning + burnin + 1
     samples <- rep(0, N_total)
     accept_rate <- rep(0, N_total)
-    y_summary <- summary_stat(y, family = summary_stat)
+    y_summary <- sumstat(y, family = sumstat)
 
     # initialize chain
     samples[1] <- rgamma(n = 1, shape = alpha, rate = beta)
@@ -29,7 +29,7 @@ abc_mcmc_sampler <- function(N, epsilon, y, kernel="identity", summary_stat="ori
         z <- rexp(length(y), rate = theta)
 
         # compute acceptance probability
-        z_summary <- summary_stat(z, family = summary_stat)
+        z_summary <- sumstat(z, family = sumstat)
         accept_prob_kernel <- discrep_kernel(z_summary, y_summary, epsilon = epsilon, kernel = kernel)
         
         mcmc_ratio <- dgamma(theta, shape = alpha, rate = beta) * dnorm(samples[i - 1], mean = theta) / ( 

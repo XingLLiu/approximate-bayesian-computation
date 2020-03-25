@@ -1,15 +1,59 @@
+library(rje)
 source("src/metrics.R")
 
-# abc_sample <- function(N, epsilon, y, alpha, beta, kernel="identity", summary_stat="original"){
-soft_abc <- function(N, epsilon, y, alpha, beta, kernel="uniform", summary_stat="original"){
+# # abc_sample <- function(N, epsilon, y, alpha, beta, kernel="identity", summary_stat="original"){
+# soft_abc <- function(N, epsilon, y, alpha, beta, kernel="uniform", summary_stat="original"){
+
+#     # initialize sample vector
+#     samples <- rep(0, N)
+#     # initialize acceptance rate vector
+#     accept_rate <- rep(0, N)
+#     # compute summary statistic of y
+#     y_summary <- summary_stat(y, family = summary_stat)
+
+#     for (i in 1:N) {
+#         # initialize criterion
+#         rho <- epsilon + 1
+#         accept_prob <- rho <= epsilon
+
+#         # initialize trial index
+#         trials <- 0
+#         while (runif(n = 1) > accept_prob){
+#             # sample candidate parameter
+#             theta <- rgamma(n = 1, shape = alpha, rate = beta)
+#             # sample synthetic data
+#             z <- rexp(length(y), rate = theta)
+#             # compute acceptance probability
+#             z_summary <- summary_stat(z, family = summary_stat)
+#             accept_prob <- discrep_kernel(z_summary, y_summary, epsilon, kernel)
+#             # update trial index
+#             trials <- trials + 1
+#         }
+
+#         samples[i] <- theta
+#         accept_rate[i] <- 1/trials
+
+#         if (i %% 50 == 0){
+#             cat(sprintf("[%s / %s]\n", i, N))
+#         }
+#     }
+    
+#     return(list("samples" = samples, "trials" = accept_rate))
+# }
+
+
+
+soft_abc <- function(N, epsilon, y, prior, simulate, kernel="uniform", sumstat="original"){
 
     # initialize sample vector
     samples <- rep(0, N)
     # initialize acceptance rate vector
     accept_rate <- rep(0, N)
     # compute summary statistic of y
-    y_summary <- summary_stat(y, family = summary_stat)
+    y_summary <- sumstat(y, family = sumstat)
 
+    print(sprintf("Begin soft-ABC. Kernel: %s; summary statistic: %s; epsilon ",
+                    kernel, sumstat, epsilon))
     for (i in 1:N) {
         # initialize criterion
         rho <- epsilon + 1
@@ -19,11 +63,11 @@ soft_abc <- function(N, epsilon, y, alpha, beta, kernel="uniform", summary_stat=
         trials <- 0
         while (runif(n = 1) > accept_prob){
             # sample candidate parameter
-            theta <- rgamma(n = 1, shape = alpha, rate = beta)
+            theta <- prior(1)
             # sample synthetic data
-            z <- rexp(length(y), rate = theta)
+            z <- simulate(n = length(y), theta = theta)
             # compute acceptance probability
-            z_summary <- summary_stat(z, family = summary_stat)
+            z_summary <- sumstat(z, family = sumstat)
             accept_prob <- discrep_kernel(z_summary, y_summary, epsilon, kernel)
             # update trial index
             trials <- trials + 1
@@ -32,9 +76,7 @@ soft_abc <- function(N, epsilon, y, alpha, beta, kernel="uniform", summary_stat=
         samples[i] <- theta
         accept_rate[i] <- 1/trials
 
-        if (i %% 50 == 0){
-            cat(sprintf("[%s / %s]\n", i, N))
-        }
+        printPercentage(i, N)
     }
     
     return(list("samples" = samples, "trials" = accept_rate))

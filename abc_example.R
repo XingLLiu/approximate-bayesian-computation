@@ -17,10 +17,10 @@ samples_rbf <- abc_sample(N = 1000, epsilon = 0.05, y = y, alpha = alpha0, beta 
 # Rejection with Epanechnikov
 samples_epan <- abc_sample(N = 1000, epsilon = 0.15, y = y, alpha = alpha0, beta = beta0, kernel = "epan")
 # Rejection with identity kernel and sufficient summary statistic
-samples_id_sufficient <-  abc_sample(N = 1000, epsilon = 0.01, y = y, alpha = alpha0, beta = beta0, summary_stat = "mean")
+samples_id_sufficient <-  abc_sample(N = 1000, epsilon = 0.01, y = y, alpha = alpha0, beta = beta0, sumstat = "mean")
 # ABC MCMC with Gaussian proposal
 source("src/abc_mcmc.R")
-samples_mcmc <- abc_mcmc_sampler(N = 1000, epsilon = 0.1, y = y, summary_stat = "mean", burnin = 30000, thinning = 100,
+samples_mcmc <- abc_mcmc_sampler(N = 1000, epsilon = 0.1, y = y, sumstat = "mean", burnin = 30000, thinning = 100,
                                 alpha = alpha0, beta = beta0)
 
 # Plot results
