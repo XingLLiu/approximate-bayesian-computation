@@ -1,11 +1,12 @@
 # g-and-k distribution with uniform prior on [0, 10]^4
 source("src/mcmc/mh.R")
 source("src/gandk/gandk.R")
+source("src/rej_abc.R")
 set.seed(2020)
 theta_star <- list(a = 3, b = 1, g = 2, k = 0.5)
 theta_star_vec <- c(theta_star$a, theta_star$b, theta_star$g, theta_star$k)
 hyperparams <- list(burnin = 50000, thinning = 10)
-epsilon <- c(1)
+epsilon <- c(0.1)
 nobservation <- 250
 nthetas <- 1024
 
@@ -58,7 +59,8 @@ mhout.df <- mhchainlist_to_dataframe(mhout$chains)
 mhout.df <- mhout.df %>% filter(iteration > hyperparams$burnin,
                                 iteration %% hyperparams$thinning == 1)
 
-write.csv(mhout.df, "results/gandk/mcmcsamples.R")
+# write.csv(mhout.df, "results/gandk/mcmcsamples.R")
+mhout.df <- read.csv("results/gandk/mcmcsamples.R", header = TRUE)
 
 g1 <- ggplot(mhout.df, aes(x = X.1)) + 
         geom_density() + 
@@ -83,17 +85,6 @@ simulate_abc <- function(n, theta){
   return(observations)
 }
 
-# summary statistic
-sumstat <- function(z){
-  s <- rep(0, 4)
-  octiles <- quantile(z, probs = (1:7)/10)
-  s[1] <- octiles[4]
-  s[2] <- octiles[6] - octiles[2]
-  s[3] <- (octiles[6] + octiles[2] - 2 * octiles[4]) / s[2]
-  s[4] <- (octiles[7] - octiles[5] + octiles[3] - octiles[1]) / s[2]
-  return(s)
-}
-
 # initialize dataframes to store samples
 method_names <- c(paste("epsilon =", epsilon), "gaussian")
 abc_df <- data.frame(method = rep(method_names, each = nthetas),
@@ -106,14 +97,14 @@ abc_df <- data.frame(method = rep(method_names, each = nthetas),
 # rejection abc
 source("src/rej_abc.R")
 for (i in 1:length(epsilon)){
-  samples_df <- rej_abc(N = nthetas, epsilon = epsilon[i], y = y, prior = rprior,
+  samples_df <- rej_abc(N = nthetas, epsilon = epsilon[i], y = y, rprior = rprior,
                         simulate = simulate_abc, sumstat = sumstat)
   abc_df[(1 + (i - 1) * nthetas): (i * nthetas), -1] <- samples_df$samples
 }
 
 # soft abc with gaussian kernel
 source("src/soft_abc.R")
-samples_df <- soft_abc(N = nthetas, epsilon = epsilon[i], y = y, prior = rprior,
+samples_df <- soft_abc(N = nthetas, epsilon = epsilon[i], y = y, rprior = rprior,
                         simulate = simulate_abc, sumstat = sumstat)
 ind <- (1 + length(epsilon) * nthetas): ((length(epsilon) + 1) * nthetas)
 abc_df[ind, -1] <- apply(samples_df$samples, 2, sample,
@@ -135,4 +126,119 @@ g4 + geom_density(data = abc_df, aes(x = samples.k, colour = method))
 plt <- gridExtra::grid.arrange(g1, g2, g3, g4, ncol = 2)
 
 ggsave(plt, file = "plots/soft_abc/gandk1d_eg.pdf", height = 5)
+
+
+
+
+
+
+# data-generating process
+simulate <- function(theta){
+  return(matrix(qgandk(runif(nobservation), theta), ncol = 1))
+}
+
+# summary statistic
+sumstat <- function(z){
+  s <- rep(0, 4)
+  octiles <- quantile(z, probs = (1:7)/10)
+  s[1] <- octiles[4]
+  s[2] <- octiles[6] - octiles[2]
+  s[3] <- (octiles[6] + octiles[2] - 2 * octiles[4]) / s[2]
+  s[4] <- (octiles[7] - octiles[5] + octiles[3] - octiles[1]) / s[2]
+  return(s)
+}
+
+# initialize dataframes to store samples
+method_names <- c(paste("epsilon =", epsilon, " uniform"), "MMD", "Wasserstein", "KL divergence")
+abc_df <- data.frame(method = rep(method_names, each = nthetas),
+                     samples.a = NA,
+                     samples.b = NA,
+                     samples.g = NA,
+                     samples.k = NA
+                    )
+
+# rej ABC
+args_rej <- list(nthetas = nthetas, y = y,
+                  rpiror = rprior,
+                  simulate = simulate,
+                  kernel = "uniform",
+                  discrepancy = l2norm,
+                  sumstat = sumstat,
+                  epsilon = epsilon[1]
+                )
+
+samples_df <- rej_abc(args_rej)
+abc_df$samples[index(1, nthetas)] <- samples_df$samples
+
+
+# K2 ABC
+source("src/mmd/mmdsq_c.R")
+bandwidth <- median(apply(y, 1, l1norm))
+mmdsq <- function(y, z){ 
+  return(mmdsq_c(y, z, bandwidth)) 
+}
+
+args_mmd <- list(nthetas = nthetas, y = y,
+                  rpiror = rprior,
+                  simulate = simulate,
+                  kernel = "uniform",
+                  discrepancy = mmdsq,
+                  epsilon = 0.01
+                )
+
+k2abc_out <- rej_abc(args_mmd)
+abc_df$samples[index(2)] <- k2abc_out$samples
+
+
+# KL ABC
+# function to compute 1-Wasserstein distance between observed data and fake data given as argument
+wdistance <- function(y_sorted, y_fake){
+  y_fake <- sort(y_fake)
+  return(mean(abs(y_sorted - y_fake)))
+} 
+
+args_wabc <- list(nthetas = nthetas, y = sort(y),
+                  rpiror = rprior,
+                  simulate = simulate,
+                  kernel = "uniform",
+                  discrepancy = wdistance,
+                  epsilon = 0.1
+                 ) 
+
+wabc_out <- rej_abc(args_wabc)
+abc_df$samples[index(3)] <- wabc_out$samples
+
+
+# KL ABC
+# function to compute 1-Wasserstein distance between observed data and fake data given as argument
+kldist <- function(y, z){
+  return(FNN::KLx.divergence(y, z, k = 1))
+} 
+
+args_kl <- list(nthetas = nthetas, y = sort(y),
+                rpiror = rprior,
+                simulate = simulate,
+                kernel = "uniform",
+                discrepancy = kldist,
+                epsilon = 0.01
+               ) 
+
+klabc_out <- rej_abc(args_kl)
+abc_df$samples[index(4)] <- klabc_out$samples
+
+
+# plot results
+plt <- ggplot(abc_df) +
+        geom_density(aes(x = samples, colour = method)) +
+        geom_line(data = posterior_df, aes(x = thetavals, y = true_posterior)) +
+        geom_vline(xintercept = theta_star$theta, linetype = "dashed") +
+        labs(x = "theta", y = "density") +
+        theme(
+              legend.position = c(.95, .95),
+              legend.justification = c("right", "top"),
+              legend.title=element_blank()
+             ) +
+        guides(color = guide_legend(override.aes = list(linetype = "solid")))
+
+ggsave(plt, file = "plots/soft_abc/normal1d_full_eg.pdf", height = 5)
 

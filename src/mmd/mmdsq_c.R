@@ -36,30 +36,3 @@ Rcpp::cppFunction("
 ")
 
 
-# MMD for 1D data. Much faster implementation
-# Rcpp::cppFunction("
-# double mmdsq_c(NumericMatrix y, NumericMatrix z, Function kernel){
-#   int nobs = y.rows();
-#   // int dimension = y.cols();
-#   double result = 0;
-#   NumericMatrix kernmat;
-#   double zz = 0;
-#   double yy = 0;
-#   double yz = 0;
-
-#   for (int i1 = 0; i1 < nobs; i1 ++){
-#     for (int i2 = 0; i2 < nobs; i2 ++){
-#       if (i1 != i2){
-#         kernmat = kernel(y(i1, 0), y(i2, 0));
-#         yy += kernmat(0, 0);
-#         kernmat = kernel(z(i1, 0), z(i2, 0));
-#         zz += kernmat(0, 0);
-#       }
-#       kernmat = kernel(y(i1, 0), z(i2, 0));
-#       yz += kernmat(0, 0);
-#     }
-#   }
-#   result = yy / (nobs * (nobs - 1)) + zz / (nobs * (nobs - 1)) - 2 * yz / (nobs * nobs);
-#   return result;
-# }
-# ")

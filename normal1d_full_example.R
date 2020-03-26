@@ -2,9 +2,9 @@
 # Only theta_\ast is unknown
 library(ggplot2)
 set.seed(2020)
-theta_star <- list(theta = 2, sigma = 2)
+theta_star <- list(theta = 0, sigma = 2)
 hyperparams <- list(m = 1, tau = 2)
-epsilon <- c(0.1, 0.5, 1, 2.5, 5)   # c(0.05, 0.1, 0.5, 1)
+epsilon <- c(0.05)   # c(0.05, 0.1, 0.5, 1)
 nobservation <- 500
 nthetas <- 1024
 y <- matrix(rnorm(nobservation, mean = theta_star$theta, sd = theta_star$sigma), ncol = 1)
@@ -18,7 +18,7 @@ simulate <- function(n, theta){
 }
 
 # initialize dataframe to store the true density
-thetavals <- seq(-4, 4, length.out = nthetas)
+thetavals <- seq(-2, 2, length.out = nthetas)
 posterior_df <- data.frame(thetavals = thetavals,
                            true_posterior = NA,
                            abc_posterior = NA
@@ -47,77 +47,90 @@ posterior_df$abc_posterior <- abcposterior_func(thetavals)
 
 # initialize arguments
 source("src/rej_abc.R")
-source("src/soft_abc.R")
-args <- list(nthetas = nthetas, y = y,
-              rpiror = rprior,
-              simulate = simulate,
-              kernel = "gaussian",
-              discrepancy = l2norm,
-              sumstat = mean
-              )
+args_rej <- list(nthetas = nthetas, y = y,
+                  rpiror = rprior,
+                  simulate = simulate,
+                  kernel = "uniform",
+                  discrepancy = l2norm,
+                  sumstat = mean,
+                  epsilon = epsilon[1]
+                )
 
 # initialize dataframes to store samples
-method_names <- c(paste("epsilon =", epsilon), "gaussian")
+method_names <- c(paste("epsilon =", epsilon, " uniform"), "MMD", "Wasserstein", "KL divergence")
 abc_df <- data.frame(method = rep(method_names, each = nthetas),
                      samples = NA
                     )
 
-# rejection abc
-for (i in 1:length(method_names)){
-  if (i <= length(epsilon)){
-    # samples_df <- rej_abc(N = nthetas, epsilon = epsilon[i], y = y, rprior = rprior, simulate = simulate, sumstat = "mean")
-    args_rej <- args
-    args_rej$epsilon <- epsilon[i]
-    args_rej$kernel <- "uniform"
-    samples_df <- rej_abc(args_rej)
-  } else {
-    args$epsilon <- epsilon[i]
-    samples_df <- soft_abc(args)
-  }
-  abc_df$samples[(1 + (i - 1) * nthetas): (i * nthetas)] <- samples_df$samples
+# function to set up the index
+index <- function(i){
+  return((1 + (i - 1) * nthetas): (i * nthetas))
 }
 
-
-# plot results
-plt_color <- scales::seq_gradient_pal(rgb(1, 0.5, 0.5), "darkblue")(seq(0, 1, length.out = length(method_names)))
-plt <- ggplot(abc_df) +
-        geom_density(aes(x = samples, colour = method)) +
-        scale_color_manual(values = plt_color) +
-        geom_line(data = posterior_df, aes(x = thetavals, y = true_posterior)) +
-        geom_vline(xintercept = theta_star$theta, linetype = "dashed") +
-        labs(x = "theta", y = "density") +
-        theme(
-              legend.position = c(.95, .95),
-              legend.justification = c("right", "top"),
-              legend.title=element_blank()
-             ) +
-        guides(color = guide_legend(override.aes = list(linetype = "solid")))
-
-ggsave(plt, file = "plots/soft_abc/normal1d_eg.pdf", height = 5)
+# rejection abc
+samples_df <- rej_abc(args_rej)
+abc_df$samples[index(1)] <- samples_df$samples
 
 
-# K2ABC
+# K2 ABC
 source("src/mmd/mmdsq_c.R")
 bandwidth <- median(apply(y, 1, l1norm))
 mmdsq <- function(y, z){ 
   return(mmdsq_c(y, z, bandwidth)) 
 }
 
-k2abc_args <- list(nthetas = nthetas, y = y,
-                    rpiror = rprior,
-                    simulate = simulate,
-                    kernel = "uniform",
-                    discrepancy = mmdsq,
-                    epsilon = 0.005
-                  )
+args_mmd <- list(nthetas = nthetas, y = y,
+                  rpiror = rprior,
+                  simulate = simulate,
+                  kernel = "uniform",
+                  discrepancy = mmdsq,
+                  epsilon = 0.01
+                )
 
-k2abc_out <- rej_abc(k2abc_args)
+k2abc_out <- rej_abc(args_mmd)
+abc_df$samples[index(2)] <- k2abc_out$samples
+
+
+# KL ABC
+# function to compute 1-Wasserstein distance between observed data and fake data given as argument
+wdistance <- function(y_sorted, y_fake){
+  y_fake <- sort(y_fake)
+  return(mean(abs(y_sorted - y_fake)))
+} 
+
+args_wabc <- list(nthetas = nthetas, y = sort(y),
+                  rpiror = rprior,
+                  simulate = simulate,
+                  kernel = "uniform",
+                  discrepancy = wdistance,
+                  epsilon = 0.1
+                 ) 
+
+wabc_out <- rej_abc(args_wabc)
+abc_df$samples[index(3)] <- wabc_out$samples
+
+
+# KL ABC
+# function to compute 1-Wasserstein distance between observed data and fake data given as argument
+kldist <- function(y, z){
+  return(FNN::KLx.divergence(y, z, k = 1))
+} 
+
+args_kl <- list(nthetas = nthetas, y = sort(y),
+                rpiror = rprior,
+                simulate = simulate,
+                kernel = "uniform",
+                discrepancy = kldist,
+                epsilon = 0.01
+               ) 
+
+klabc_out <- rej_abc(args_kl)
+abc_df$samples[index(4)] <- klabc_out$samples
+
 
 # plot results
-plt_color <- scales::seq_gradient_pal(rgb(1, 0.5, 0.5), "darkblue")(seq(0, 1, length.out = length(method_names) + 1))
 plt <- ggplot(abc_df) +
         geom_density(aes(x = samples, colour = method)) +
-        scale_color_manual(values = plt_color) +
         geom_line(data = posterior_df, aes(x = thetavals, y = true_posterior)) +
         geom_vline(xintercept = theta_star$theta, linetype = "dashed") +
         labs(x = "theta", y = "density") +
@@ -128,7 +141,5 @@ plt <- ggplot(abc_df) +
              ) +
         guides(color = guide_legend(override.aes = list(linetype = "solid")))
 
+ggsave(plt, file = "plots/soft_abc/normal1d_full_eg.pdf", height = 5)
 
-plt + geom_density(data = data.frame(k2abc_out), aes(x = k2abc_out$samples, colour = "green"))
-
-ggsave(plt, file = "plots/soft_abc/normal1d_eg_full.pdf", height = 5)
