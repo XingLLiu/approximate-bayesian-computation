@@ -10,7 +10,7 @@ nobservation <- 500
 y <- rexp(nobservation, lambda0)
 
 # Rejection with identity kernel
-source("src/abc_rej.R")
+source("src/rej_abc.R")
 samples_id <- abc_sample(N = 1000, epsilon = 0.15, y = y, alpha = alpha0, beta = beta0)
 # Rejection with Gaussian kernel
 samples_rbf <- abc_sample(N = 1000, epsilon = 0.05, y = y, alpha = alpha0, beta = beta0, kernel = "gaussian")

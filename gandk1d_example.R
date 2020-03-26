@@ -3,6 +3,7 @@ source("src/mcmc/mh.R")
 source("src/gandk/gandk.R")
 set.seed(2020)
 theta_star <- list(a = 3, b = 1, g = 2, k = 0.5)
+theta_star_vec <- c(theta_star$a, theta_star$b, theta_star$g, theta_star$k)
 hyperparams <- list(burnin = 50000, thinning = 10)
 epsilon <- c(1)
 nobservation <- 250
@@ -25,7 +26,7 @@ dprior <- function(thetaparticles, parameters){
 
 # function to generate a dataset given a parameter
 simulate <- function(theta){
-  observations <- qgandk(runif(nobservation), )
+  observations <- qgandk(runif(nobservation), theta)
   return(observations)
 }
 
@@ -43,7 +44,6 @@ target <- list(rprior = rprior,
                thetadim = 4,
                ydim = 1)
 
-theta_star_vec <- c(theta_star$a, theta_star$b, theta_star$g, theta_star$k)
 y <- target$simulate(theta_star_vec)
 
 # tuning params for MCMC
@@ -77,28 +77,62 @@ gridExtra::grid.arrange(g1, g2, g3, g4, ncol = 2)
 
 
 # rejection abc
-# Gamma prior
-rprior <- function(n){ return(rnorm(4 * n, mean = hyperparams$m, sd = hyperparams$tau)) }
-
 # generating process
-simulate <- function(n, theta){
-  observations <- qgandk(runif(n), )
+simulate_abc <- function(n, theta){
+  observations <- qgandk(runif(n), theta)
   return(observations)
 }
 
+# summary statistic
+sumstat <- function(z){
+  s <- rep(0, 4)
+  octiles <- quantile(z, probs = (1:7)/10)
+  s[1] <- octiles[4]
+  s[2] <- octiles[6] - octiles[2]
+  s[3] <- (octiles[6] + octiles[2] - 2 * octiles[4]) / s[2]
+  s[4] <- (octiles[7] - octiles[5] + octiles[3] - octiles[1]) / s[2]
+  return(s)
+}
+
 # initialize dataframes to store samples
-method_names <- paste("epsilon =", epsilon)
+method_names <- c(paste("epsilon =", epsilon), "gaussian")
 abc_df <- data.frame(method = rep(method_names, each = nthetas),
-                     samples = NA
+                     samples.a = NA,
+                     samples.b = NA,
+                     samples.g = NA,
+                     samples.k = NA
                     )
 
 # rejection abc
-source("src/abc_rej.R")
+source("src/rej_abc.R")
 for (i in 1:length(epsilon)){
-  samples_df <- soft_abc(N = nthetas, epsilon = epsilon[i], y = y, prior = rprior,
-                          simulate = simulate, sumstat = "mean")
-  abc_df$samples[(1 + (i - 1) * nthetas): (i * nthetas)] <- samples_df$samples
+  samples_df <- rej_abc(N = nthetas, epsilon = epsilon[i], y = y, prior = rprior,
+                        simulate = simulate_abc, sumstat = sumstat)
+  abc_df[(1 + (i - 1) * nthetas): (i * nthetas), -1] <- samples_df$samples
 }
 
+# soft abc with gaussian kernel
+source("src/soft_abc.R")
+samples_df <- soft_abc(N = nthetas, epsilon = epsilon[i], y = y, prior = rprior,
+                        simulate = simulate_abc, sumstat = sumstat)
+ind <- (1 + length(epsilon) * nthetas): ((length(epsilon) + 1) * nthetas)
+abc_df[ind, -1] <- apply(samples_df$samples, 2, sample,
+                          size = nthetas, prob = samples_df$weights, replace = TRUE)
 
+
+# plot results
+# plt_color <- scales::seq_gradient_pal(rgb(1, 0.5, 0.5), "darkblue")(seq(0, 1, length.out = length(epsilon) + 1))
+g1 + geom_density(data = abc_df, aes(x = samples.a, colour = method))
+
+g2 + geom_density(data = abc_df, aes(x = samples.b, colour = method))
+
+g3 + geom_density(data = abc_df, aes(x = samples.g, colour = method))
+
+g4 + geom_density(data = abc_df, aes(x = samples.k, colour = method))
+
+
+
+plt <- gridExtra::grid.arrange(g1, g2, g3, g4, ncol = 2)
+
+ggsave(plt, file = "plots/soft_abc/gandk1d_eg.pdf", height = 5)
 

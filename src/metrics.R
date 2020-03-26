@@ -1,9 +1,11 @@
 source("src/kernels.R")
 
-sumstat <- function(z, family="original"){
-    if (family == "original"){
+sumstat_fun <- function(z, FUN="original"){
+    if (is.function(FUN)){
+        return(FUN(z))
+    } else if (FUN == "original"){
         return(z)
-    } else if (family == "mean"){
+    } else if (FUN == "mean"){
         return(mean(z))
     }
 }

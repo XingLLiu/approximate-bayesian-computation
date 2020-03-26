@@ -33,10 +33,6 @@ mmd_sq <- function(kernel, y, z, method="ordinary", size=1000)
     rf <- randFourierRBF(size, y, z, kernel)
     mmd_sq <- sum(rowMeans(rf$phi.y - rf$phi.z)^2)
     rm(rf)
-
-    # mmd_sq <- sum((rowMeans(rf_y - rf_z))^2)
-    # rm(rf_y)
-    # rm(rf_z)
   }
 
   return(mmd_sq)

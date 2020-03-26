@@ -50,15 +50,16 @@ abc_df <- data.frame(method = rep(method_names, each = nthetas),
                     )
 
 # rejection abc
-source("src/abc_rej.R")
+source("src/rej_abc.R")
 for (i in 1:length(epsilon)){
-  samples_df <- soft_abc(N = nthetas, epsilon = epsilon[i], y = y, prior = rprior, simulate = simulate, sumstat = "mean")
+  samples_df <- rej_abc(N = nthetas, epsilon = epsilon[i], y = y, prior = rprior, simulate = simulate, sumstat = "mean")
   abc_df$samples[(1 + (i - 1) * nthetas): (i * nthetas)] <- samples_df$samples
 }
 
+
+# plot results
 plt_color <- scales::seq_gradient_pal(rgb(1, 0.5, 0.5), "darkblue")(seq(0, 1, length.out = length(epsilon)))
 plt <- ggplot(abc_df) +
-        # geom_line(data = posterior_df, aes(x = thetavals, y = abc_posterior), colour = "grey") +
         geom_density(aes(x = samples, colour = method)) +
         scale_color_manual(values = plt_color) +
         geom_line(data = posterior_df, aes(x = thetavals, y = true_posterior)) +

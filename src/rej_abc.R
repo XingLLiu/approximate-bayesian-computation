@@ -43,17 +43,16 @@ source("src/metrics.R")
 
 
 
-soft_abc <- function(N, epsilon, y, prior, simulate, kernel="uniform", sumstat="original"){
+rej_abc <- function(N, epsilon, y, prior, simulate, kernel="uniform", sumstat="original"){
 
     # initialize sample vector
-    samples <- rep(0, N)
+    samples <- matrix(0, nrow = N, ncol = length(prior(1)))
     # initialize acceptance rate vector
     accept_rate <- rep(0, N)
     # compute summary statistic of y
-    y_summary <- sumstat(y, family = sumstat)
+    y_summary <- sumstat_fun(y, sumstat)
 
-    print(sprintf("Begin soft-ABC. Kernel: %s; summary statistic: %s; epsilon ",
-                    kernel, sumstat, epsilon))
+    print(sprintf("Begin soft-ABC. Kernel: %s; epsilon: %f", kernel, epsilon))
     for (i in 1:N) {
         # initialize criterion
         rho <- epsilon + 1
@@ -67,13 +66,13 @@ soft_abc <- function(N, epsilon, y, prior, simulate, kernel="uniform", sumstat="
             # sample synthetic data
             z <- simulate(n = length(y), theta = theta)
             # compute acceptance probability
-            z_summary <- sumstat(z, family = sumstat)
+            z_summary <- sumstat_fun(z, sumstat)
             accept_prob <- discrep_kernel(z_summary, y_summary, epsilon, kernel)
             # update trial index
             trials <- trials + 1
         }
 
-        samples[i] <- theta
+        samples[i, ] <- theta
         accept_rate[i] <- 1/trials
 
         printPercentage(i, N)

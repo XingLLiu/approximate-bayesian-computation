@@ -45,9 +45,9 @@ abc_df <- data.frame(method = rep(method_names, each = nthetas),
                     )
 
 # rejection abc
-source("src/abc_rej.R")
+source("src/rej_abc.R")
 for (i in 1:length(epsilon)){
-  samples_df <- soft_abc(N = nthetas, epsilon = epsilon[i], y = y, prior = rprior, simulate = simulate)
+  samples_df <- rej_abc(N = nthetas, epsilon = epsilon[i], y = y, prior = rprior, simulate = simulate)
   abc_df$samples[(1 + (i - 1) * nthetas): (i * nthetas)] <- samples_df$samples
 }
 
