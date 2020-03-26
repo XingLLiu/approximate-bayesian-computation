@@ -26,9 +26,12 @@ dprior <- function(thetaparticles, parameters){
 }
 
 # function to generate a dataset given a parameter
+# simulate <- function(theta){
+#   observations <- qgandk(runif(nobservation), theta)
+#   return(observations)
+# }
 simulate <- function(theta){
-  observations <- qgandk(runif(nobservation), theta)
-  return(observations)
+  return(matrix(qgandk(runif(nobservation), theta), ncol = 1))
 }
 
 # loglikelihood of ys, given each theta 
@@ -54,78 +57,63 @@ tuning_parameters <- list(niterations = (nthetas - 1) * hyperparams$thinning + h
                           adaptation = 2000,
                           init_chains = matrix(theta_star_vec, nrow = 1)
                           )
-mhout <- mh(y, target, tuning_parameters)
-mhout.df <- mhchainlist_to_dataframe(mhout$chains)
-mhout.df <- mhout.df %>% filter(iteration > hyperparams$burnin,
-                                iteration %% hyperparams$thinning == 1)
+# mhout <- mh(y, target, tuning_parameters)
+# mhout.df <- mhchainlist_to_dataframe(mhout$chains)
+# mhout.df <- mhout.df %>% dplyr::filter(iteration > hyperparams$burnin,
+#                                        iteration %% hyperparams$thinning == 1)
 
-# write.csv(mhout.df, "results/gandk/mcmcsamples.R")
-mhout.df <- read.csv("results/gandk/mcmcsamples.R", header = TRUE)
-
-g1 <- ggplot(mhout.df, aes(x = X.1)) + 
-        geom_density() + 
-        geom_vline(xintercept = theta_star_vec[1], linetype = 2)
-g2 <- ggplot(mhout.df, aes(x = X.2)) + 
-        geom_density() + 
-        geom_vline(xintercept = theta_star_vec[2], linetype = 2)
-g3 <- ggplot(mhout.df, aes(x = X.3)) + 
-        geom_density() + 
-        geom_vline(xintercept = theta_star_vec[3], linetype = 2)
-g4 <- ggplot(mhout.df, aes(x = X.4)) + 
-        geom_density() + 
-        geom_vline(xintercept = theta_star_vec[4], linetype = 2)
-gridExtra::grid.arrange(g1, g2, g3, g4, ncol = 2)
+# write.csv(mhout.df, "results/soft_abc/gandk1d/gandk_mcmc.csv", row.names = FALSE)
+mhout.df <- read.csv("results/soft_abc/gandk1d/gandk_mcmc.csv", header = TRUE)
 
 
+# # rejection abc
+# # generating process
+# simulate_abc <- function(n, theta){
+#   observations <- qgandk(runif(n), theta)
+#   return(observations)
+# }
 
-# rejection abc
-# generating process
-simulate_abc <- function(n, theta){
-  observations <- qgandk(runif(n), theta)
-  return(observations)
-}
+# # initialize dataframes to store samples
+# method_names <- c(paste("epsilon =", epsilon), "gaussian")
+# abc_df <- data.frame(method = rep(method_names, each = nthetas),
+#                      samples.a = NA,
+#                      samples.b = NA,
+#                      samples.g = NA,
+#                      samples.k = NA
+#                     )
 
-# initialize dataframes to store samples
-method_names <- c(paste("epsilon =", epsilon), "gaussian")
-abc_df <- data.frame(method = rep(method_names, each = nthetas),
-                     samples.a = NA,
-                     samples.b = NA,
-                     samples.g = NA,
-                     samples.k = NA
-                    )
+# # rejection abc
+# source("src/rej_abc.R")
+# for (i in 1:length(epsilon)){
+#   samples_df <- rej_abc(N = nthetas, epsilon = epsilon[i], y = y, rprior = rprior,
+#                         simulate = simulate_abc, sumstat = sumstat)
+#   abc_df[(1 + (i - 1) * nthetas): (i * nthetas), -1] <- samples_df$samples
+# }
 
-# rejection abc
-source("src/rej_abc.R")
-for (i in 1:length(epsilon)){
-  samples_df <- rej_abc(N = nthetas, epsilon = epsilon[i], y = y, rprior = rprior,
-                        simulate = simulate_abc, sumstat = sumstat)
-  abc_df[(1 + (i - 1) * nthetas): (i * nthetas), -1] <- samples_df$samples
-}
-
-# soft abc with gaussian kernel
-source("src/soft_abc.R")
-samples_df <- soft_abc(N = nthetas, epsilon = epsilon[i], y = y, rprior = rprior,
-                        simulate = simulate_abc, sumstat = sumstat)
-ind <- (1 + length(epsilon) * nthetas): ((length(epsilon) + 1) * nthetas)
-abc_df[ind, -1] <- apply(samples_df$samples, 2, sample,
-                          size = nthetas, prob = samples_df$weights, replace = TRUE)
+# # soft abc with gaussian kernel
+# source("src/soft_abc.R")
+# samples_df <- soft_abc(N = nthetas, epsilon = epsilon[i], y = y, rprior = rprior,
+#                         simulate = simulate_abc, sumstat = sumstat)
+# ind <- (1 + length(epsilon) * nthetas): ((length(epsilon) + 1) * nthetas)
+# abc_df[ind, -1] <- apply(samples_df$samples, 2, sample,
+#                           size = nthetas, prob = samples_df$weights, replace = TRUE)
 
 
-# plot results
-# plt_color <- scales::seq_gradient_pal(rgb(1, 0.5, 0.5), "darkblue")(seq(0, 1, length.out = length(epsilon) + 1))
-g1 + geom_density(data = abc_df, aes(x = samples.a, colour = method))
+# # plot results
+# # plt_color <- scales::seq_gradient_pal(rgb(1, 0.5, 0.5), "darkblue")(seq(0, 1, length.out = length(epsilon) + 1))
+# g1 + geom_density(data = abc_df, aes(x = samples.a, colour = method))
 
-g2 + geom_density(data = abc_df, aes(x = samples.b, colour = method))
+# g2 + geom_density(data = abc_df, aes(x = samples.b, colour = method))
 
-g3 + geom_density(data = abc_df, aes(x = samples.g, colour = method))
+# g3 + geom_density(data = abc_df, aes(x = samples.g, colour = method))
 
-g4 + geom_density(data = abc_df, aes(x = samples.k, colour = method))
+# g4 + geom_density(data = abc_df, aes(x = samples.k, colour = method))
 
 
 
-plt <- gridExtra::grid.arrange(g1, g2, g3, g4, ncol = 2)
+# plt <- gridExtra::grid.arrange(g1, g2, g3, g4, ncol = 2)
 
-ggsave(plt, file = "plots/soft_abc/gandk1d_eg.pdf", height = 5)
+# ggsave(plt, file = "plots/soft_abc/gandk1d_eg.pdf", height = 5)
 
 
 
@@ -133,8 +121,8 @@ ggsave(plt, file = "plots/soft_abc/gandk1d_eg.pdf", height = 5)
 
 
 # data-generating process
-simulate <- function(theta){
-  return(matrix(qgandk(runif(nobservation), theta), ncol = 1))
+simulate <- function(n, theta){
+  return(matrix(qgandk(runif(n), theta), ncol = 1))
 }
 
 # summary statistic
@@ -150,7 +138,7 @@ sumstat <- function(z){
 
 # initialize dataframes to store samples
 method_names <- c(paste("epsilon =", epsilon, " uniform"), "MMD", "Wasserstein", "KL divergence")
-abc_df <- data.frame(method = rep(method_names, each = nthetas),
+abc_df <- data.frame(methods = rep(method_names, each = nthetas),
                      samples.a = NA,
                      samples.b = NA,
                      samples.g = NA,
@@ -164,11 +152,11 @@ args_rej <- list(nthetas = nthetas, y = y,
                   kernel = "uniform",
                   discrepancy = l2norm,
                   sumstat = sumstat,
-                  epsilon = epsilon[1]
+                  epsilon = 1 #epsilon[1]
                 )
 
 samples_df <- rej_abc(args_rej)
-abc_df$samples[index(1, nthetas)] <- samples_df$samples
+abc_df[index(1, nthetas), 2:5] <- samples_df$samples
 
 
 # K2 ABC
@@ -183,14 +171,14 @@ args_mmd <- list(nthetas = nthetas, y = y,
                   simulate = simulate,
                   kernel = "uniform",
                   discrepancy = mmdsq,
-                  epsilon = 0.01
+                  epsilon = 0.1
                 )
 
 k2abc_out <- rej_abc(args_mmd)
-abc_df$samples[index(2)] <- k2abc_out$samples
+abc_df[index(2, nthetas), 2:5] <- k2abc_out$samples
 
 
-# KL ABC
+# WABC
 # function to compute 1-Wasserstein distance between observed data and fake data given as argument
 wdistance <- function(y_sorted, y_fake){
   y_fake <- sort(y_fake)
@@ -202,17 +190,17 @@ args_wabc <- list(nthetas = nthetas, y = sort(y),
                   simulate = simulate,
                   kernel = "uniform",
                   discrepancy = wdistance,
-                  epsilon = 0.1
+                  epsilon = 1
                  ) 
 
 wabc_out <- rej_abc(args_wabc)
-abc_df$samples[index(3)] <- wabc_out$samples
+abc_df[index(3, nthetas), 2:5] <- wabc_out$samples
 
 
 # KL ABC
-# function to compute 1-Wasserstein distance between observed data and fake data given as argument
 kldist <- function(y, z){
   return(FNN::KLx.divergence(y, z, k = 1))
+  # return(KLx.divergence(y, z, k = 1))
 } 
 
 args_kl <- list(nthetas = nthetas, y = sort(y),
@@ -220,25 +208,55 @@ args_kl <- list(nthetas = nthetas, y = sort(y),
                 simulate = simulate,
                 kernel = "uniform",
                 discrepancy = kldist,
-                epsilon = 0.01
+                epsilon = 0.5
                ) 
 
 klabc_out <- rej_abc(args_kl)
-abc_df$samples[index(4)] <- klabc_out$samples
+abc_df[index(4, nthetas), 2:5] <- klabc_out$samples
 
+
+# save results
+# write.csv(abc_df, "results/soft_abc/gandk1d/abc_df.csv", row.names = FALSE)
+abc_df <- read.csv("results/soft_abc/gandk1d/abc_df.csv")
 
 # plot results
-plt <- ggplot(abc_df) +
-        geom_density(aes(x = samples, colour = method)) +
-        geom_line(data = posterior_df, aes(x = thetavals, y = true_posterior)) +
-        geom_vline(xintercept = theta_star$theta, linetype = "dashed") +
-        labs(x = "theta", y = "density") +
-        theme(
-              legend.position = c(.95, .95),
-              legend.justification = c("right", "top"),
-              legend.title=element_blank()
-             ) +
-        guides(color = guide_legend(override.aes = list(linetype = "solid")))
+pdf(filename = "plots/soft_abc/gandk1d_eg.pdf", pointsize =12, quality = 200, bg = "white", res = NA, restoreConsole = TRUE)
+g1 <- ggplot(mhout.df, aes(x = X.1)) + 
+        geom_density() + 
+        geom_vline(xintercept = theta_star_vec[1], linetype = 2)
+g2 <- ggplot(mhout.df, aes(x = X.2)) + 
+        geom_density() + 
+        geom_vline(xintercept = theta_star_vec[2], linetype = 2)
+g3 <- ggplot(mhout.df, aes(x = X.3)) + 
+        geom_density() + 
+        geom_vline(xintercept = theta_star_vec[3], linetype = 2)
+g4 <- ggplot(mhout.df, aes(x = X.4)) + 
+        geom_density() + 
+        geom_vline(xintercept = theta_star_vec[4], linetype = 2)
 
-ggsave(plt, file = "plots/soft_abc/normal1d_full_eg.pdf", height = 5)
+g1 <- g1 + geom_density(data = abc_df, aes(x = samples.a, colour = methods)) +
+          labs(x = "a") +
+          xlim(1.5, 5) +
+          theme(legend.position = "none")
+g2 <- g2 + geom_density(data = abc_df, aes(x = samples.b, colour = methods)) +
+          labs(x = "b") +
+          xlim(0, 5) +
+          theme(
+            legend.position = c(.95, .95),
+            legend.justification = c("right", "top"),
+            legend.title = element_blank()
+          )
+g3 <- g3 + geom_density(data = abc_df, aes(x = samples.g, colour = methods)) +
+          labs(x = "g") +
+          xlim(0, 5) +
+          theme(legend.position = "none") 
+g4 <- g4 + geom_density(data = abc_df, aes(x = samples.k, colour = methods)) +
+          labs(x = "k") +
+          xlim(0, 4) +
+          theme(legend.position = "none") 
 
+gridExtra::grid.arrange(g1, g2, g3, g4, ncol = 2)
+
+multiplot(plot1a,plot1b,plot1c,plot1d, cols=2)
+dev.off()
+ggsave(file = "plots/soft_abc/gandk1d_eg.pdf", height = 5)

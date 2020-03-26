@@ -58,7 +58,7 @@ args_rej <- list(nthetas = nthetas, y = y,
 
 # initialize dataframes to store samples
 method_names <- c(paste("epsilon =", epsilon, " uniform"), "MMD", "Wasserstein", "KL divergence")
-abc_df <- data.frame(method = rep(method_names, each = nthetas),
+abc_df <- data.frame(methods = rep(method_names, each = nthetas),
                      samples = NA
                     )
 
@@ -91,7 +91,7 @@ k2abc_out <- rej_abc(args_mmd)
 abc_df$samples[index(2)] <- k2abc_out$samples
 
 
-# KL ABC
+# WABC
 # function to compute 1-Wasserstein distance between observed data and fake data given as argument
 wdistance <- function(y_sorted, y_fake){
   y_fake <- sort(y_fake)
@@ -111,7 +111,6 @@ abc_df$samples[index(3)] <- wabc_out$samples
 
 
 # KL ABC
-# function to compute 1-Wasserstein distance between observed data and fake data given as argument
 kldist <- function(y, z){
   return(FNN::KLx.divergence(y, z, k = 1))
 } 
@@ -130,7 +129,7 @@ abc_df$samples[index(4)] <- klabc_out$samples
 
 # plot results
 plt <- ggplot(abc_df) +
-        geom_density(aes(x = samples, colour = method)) +
+        geom_density(aes(x = samples, color = methods)) +
         geom_line(data = posterior_df, aes(x = thetavals, y = true_posterior)) +
         geom_vline(xintercept = theta_star$theta, linetype = "dashed") +
         labs(x = "theta", y = "density") +

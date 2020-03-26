@@ -58,7 +58,7 @@ args <- list(nthetas = nthetas, y = y,
 
 # initialize dataframes to store samples
 method_names <- c(paste("epsilon =", epsilon), "gaussian")
-abc_df <- data.frame(method = rep(method_names, each = nthetas),
+abc_df <- data.frame(methods = rep(method_names, each = nthetas),
                      samples = NA
                     )
 
@@ -81,7 +81,7 @@ for (i in 1:length(method_names)){
 # plot results
 plt_color <- scales::seq_gradient_pal(rgb(1, 0.5, 0.5), "darkblue")(seq(0, 1, length.out = length(method_names)))
 plt <- ggplot(abc_df) +
-        geom_density(aes(x = samples, colour = method)) +
+        geom_density(aes(x = samples, colour = methods)) +
         scale_color_manual(values = plt_color) +
         geom_line(data = posterior_df, aes(x = thetavals, y = true_posterior)) +
         geom_vline(xintercept = theta_star$theta, linetype = "dashed") +
@@ -94,41 +94,3 @@ plt <- ggplot(abc_df) +
         guides(color = guide_legend(override.aes = list(linetype = "solid")))
 
 ggsave(plt, file = "plots/soft_abc/normal1d_eg.pdf", height = 5)
-
-
-# K2ABC
-source("src/mmd/mmdsq_c.R")
-bandwidth <- median(apply(y, 1, l1norm))
-mmdsq <- function(y, z){ 
-  return(mmdsq_c(y, z, bandwidth)) 
-}
-
-k2abc_args <- list(nthetas = nthetas, y = y,
-                    rpiror = rprior,
-                    simulate = simulate,
-                    kernel = "uniform",
-                    discrepancy = mmdsq,
-                    epsilon = 0.005
-                  )
-
-k2abc_out <- rej_abc(k2abc_args)
-
-# plot results
-plt_color <- scales::seq_gradient_pal(rgb(1, 0.5, 0.5), "darkblue")(seq(0, 1, length.out = length(method_names) + 1))
-plt <- ggplot(abc_df) +
-        geom_density(aes(x = samples, colour = method)) +
-        scale_color_manual(values = plt_color) +
-        geom_line(data = posterior_df, aes(x = thetavals, y = true_posterior)) +
-        geom_vline(xintercept = theta_star$theta, linetype = "dashed") +
-        labs(x = "theta", y = "density") +
-        theme(
-              legend.position = c(.95, .95),
-              legend.justification = c("right", "top"),
-              legend.title=element_blank()
-             ) +
-        guides(color = guide_legend(override.aes = list(linetype = "solid")))
-
-
-plt + geom_density(data = data.frame(k2abc_out), aes(x = k2abc_out$samples, colour = "green"))
-
-ggsave(plt, file = "plots/soft_abc/normal1d_eg_full.pdf", height = 5)

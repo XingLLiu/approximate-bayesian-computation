@@ -49,7 +49,7 @@ args <- list(nthetas = nthetas, y = y,
 
 # initialize dataframes to store samples
 method_names <- paste("epsilon =", epsilon)
-abc_df <- data.frame(method = rep(method_names, each = nthetas),
+abc_df <- data.frame(methods = rep(method_names, each = nthetas),
                      samples = NA
                     )
 
@@ -64,7 +64,7 @@ for (i in 1:length(epsilon)){
 plt_color <- scales::seq_gradient_pal(rgb(1, 0.5, 0.5), "darkblue")(seq(0, 1, length.out = length(epsilon)))
 plt <- ggplot(abc_df) +
         # geom_line(data = posterior_df, aes(x = thetavals, y = abc_posterior), colour = "grey") +
-        geom_density(aes(x = samples, colour = method)) +
+        geom_density(aes(x = samples, colour = methods)) +
         scale_color_manual(values = plt_color) +
         geom_line(data = posterior_df, aes(x = thetavals, y = true_posterior), colour = "black") +
         geom_vline(xintercept = theta_star$lambda, linetype = "dashed") +
