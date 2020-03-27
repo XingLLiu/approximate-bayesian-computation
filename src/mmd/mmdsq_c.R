@@ -19,12 +19,12 @@ Rcpp::cppFunction("
 
         for (int j = 0; j < dimension; j ++){
           if (i1 != i2){
-              cost_yy += std::pow(y(i1, j) - y(i2, j), 2);
-              cost_zz += std::pow(z(i1, j) - z(i2, j), 2);
-              yy += exp(- cost_yy / (2 * epsilon * epsilon));
-              zz += exp(- cost_zz / (2 * epsilon * epsilon));
-            }
+            cost_yy += std::pow(y(i1, j) - y(i2, j), 2);
+            cost_zz += std::pow(z(i1, j) - z(i2, j), 2);
+          }
           
+          yy += exp(- cost_yy / (2 * epsilon * epsilon));
+          zz += exp(- cost_zz / (2 * epsilon * epsilon));
           cost_yz += std::pow(y(i1, j) - z(i2, j), 2);
           yz += exp(- cost_yz / (2 * epsilon * epsilon));
         }

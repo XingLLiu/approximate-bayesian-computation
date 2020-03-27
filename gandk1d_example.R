@@ -66,60 +66,6 @@ tuning_parameters <- list(niterations = (nthetas - 1) * hyperparams$thinning + h
 mhout.df <- read.csv("results/soft_abc/gandk1d/gandk_mcmc.csv", header = TRUE)
 
 
-# # rejection abc
-# # generating process
-# simulate_abc <- function(n, theta){
-#   observations <- qgandk(runif(n), theta)
-#   return(observations)
-# }
-
-# # initialize dataframes to store samples
-# method_names <- c(paste("epsilon =", epsilon), "gaussian")
-# abc_df <- data.frame(method = rep(method_names, each = nthetas),
-#                      samples.a = NA,
-#                      samples.b = NA,
-#                      samples.g = NA,
-#                      samples.k = NA
-#                     )
-
-# # rejection abc
-# source("src/rej_abc.R")
-# for (i in 1:length(epsilon)){
-#   samples_df <- rej_abc(N = nthetas, epsilon = epsilon[i], y = y, rprior = rprior,
-#                         simulate = simulate_abc, sumstat = sumstat)
-#   abc_df[(1 + (i - 1) * nthetas): (i * nthetas), -1] <- samples_df$samples
-# }
-
-# # soft abc with gaussian kernel
-# source("src/soft_abc.R")
-# samples_df <- soft_abc(N = nthetas, epsilon = epsilon[i], y = y, rprior = rprior,
-#                         simulate = simulate_abc, sumstat = sumstat)
-# ind <- (1 + length(epsilon) * nthetas): ((length(epsilon) + 1) * nthetas)
-# abc_df[ind, -1] <- apply(samples_df$samples, 2, sample,
-#                           size = nthetas, prob = samples_df$weights, replace = TRUE)
-
-
-# # plot results
-# # plt_color <- scales::seq_gradient_pal(rgb(1, 0.5, 0.5), "darkblue")(seq(0, 1, length.out = length(epsilon) + 1))
-# g1 + geom_density(data = abc_df, aes(x = samples.a, colour = method))
-
-# g2 + geom_density(data = abc_df, aes(x = samples.b, colour = method))
-
-# g3 + geom_density(data = abc_df, aes(x = samples.g, colour = method))
-
-# g4 + geom_density(data = abc_df, aes(x = samples.k, colour = method))
-
-
-
-# plt <- gridExtra::grid.arrange(g1, g2, g3, g4, ncol = 2)
-
-# ggsave(plt, file = "plots/soft_abc/gandk1d_eg.pdf", height = 5)
-
-
-
-
-
-
 # data-generating process
 simulate <- function(n, theta){
   return(matrix(qgandk(runif(n), theta), ncol = 1))
@@ -152,7 +98,7 @@ args_rej <- list(nthetas = nthetas, y = y,
                   kernel = "uniform",
                   discrepancy = l2norm,
                   sumstat = sumstat,
-                  epsilon = 1 #epsilon[1]
+                  epsilon = 0.5 #epsilon[1]
                 )
 
 samples_df <- rej_abc(args_rej)
@@ -171,7 +117,7 @@ args_mmd <- list(nthetas = nthetas, y = y,
                   simulate = simulate,
                   kernel = "uniform",
                   discrepancy = mmdsq,
-                  epsilon = 0.1
+                  epsilon = 0.05
                 )
 
 k2abc_out <- rej_abc(args_mmd)
@@ -190,7 +136,7 @@ args_wabc <- list(nthetas = nthetas, y = sort(y),
                   simulate = simulate,
                   kernel = "uniform",
                   discrepancy = wdistance,
-                  epsilon = 1
+                  epsilon = 0.5
                  ) 
 
 wabc_out <- rej_abc(args_wabc)
@@ -203,12 +149,12 @@ kldist <- function(y, z){
   # return(KLx.divergence(y, z, k = 1))
 } 
 
-args_kl <- list(nthetas = nthetas, y = sort(y),
+args_kl <- list(nthetas = nthetas, y = y,
                 rpiror = rprior,
                 simulate = simulate,
                 kernel = "uniform",
                 discrepancy = kldist,
-                epsilon = 0.5
+                epsilon = 0.3
                ) 
 
 klabc_out <- rej_abc(args_kl)
@@ -216,11 +162,11 @@ abc_df[index(4, nthetas), 2:5] <- klabc_out$samples
 
 
 # save results
-# write.csv(abc_df, "results/soft_abc/gandk1d/abc_df.csv", row.names = FALSE)
+write.csv(abc_df, "results/soft_abc/gandk1d/abc_df.csv", row.names = FALSE)
 abc_df <- read.csv("results/soft_abc/gandk1d/abc_df.csv")
 
 # plot results
-pdf(filename = "plots/soft_abc/gandk1d_eg.pdf", pointsize =12, quality = 200, bg = "white", res = NA, restoreConsole = TRUE)
+pdf("plots/gandk1d/gandk1d_eg.pdf")
 g1 <- ggplot(mhout.df, aes(x = X.1)) + 
         geom_density() + 
         geom_vline(xintercept = theta_star_vec[1], linetype = 2)
@@ -256,7 +202,5 @@ g4 <- g4 + geom_density(data = abc_df, aes(x = samples.k, colour = methods)) +
           theme(legend.position = "none") 
 
 gridExtra::grid.arrange(g1, g2, g3, g4, ncol = 2)
-
-multiplot(plot1a,plot1b,plot1c,plot1d, cols=2)
 dev.off()
-ggsave(file = "plots/soft_abc/gandk1d_eg.pdf", height = 5)
+

@@ -11,7 +11,7 @@ sumstat_fun <- function(z, FUN="original"){
 }
 
 l2norm <- function(z, y){
-    return( sqrt(sum( abs( z - y )^2 )) )
+    return( sqrt(sum( ( z - y )^2 )) )
 }
 
 l1norm <- function(y){
@@ -37,4 +37,16 @@ discrep_kernel <- function(rho, epsilon, kernel="uniform"){
 # function to set up the index to store results in a data frame
 index <- function(i, nthetas){
   return((1 + (i - 1) * nthetas): (i * nthetas))
+}
+
+# index <- function(method, dataframe){
+#   return(dataframe %>% dplyr::filter(methods = method))
+# }
+
+
+# extract legend as a separate plot
+g_legend<-function(a.gplot){
+  tmp <- ggplot_gtable(ggplot_build(a.gplot))
+  leg <- which(sapply(tmp$grobs, function(x) x$name) == "guide-box")
+  tmp$grobs[[leg]]
 }

@@ -52,7 +52,7 @@ soft_abc <- function(args)
     # sample candidate parameter
     theta <- rprior(1)
     # sample synthetic data
-    z <- simulate(n = length(y), theta = theta)
+    z <- simulate(n = nrow(y), theta = theta)
     # compute acceptance probability
     z_summary <- sumstat_fun(z)
     # compute discrepancy measure
