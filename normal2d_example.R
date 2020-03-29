@@ -13,6 +13,8 @@ theta_star <- list(theta = c(0.3, 0.7, 0.7, -0.7, -0.7),
 epsilon <- c(1)   # c(0.05, 0.1, 0.5, 1)
 nobservation <- 500
 nthetas <- 1024
+resultsprefix <- "results/normal2d/"
+plotprefix <- "plots/normal2d/"
 
 
 # Gamma prior
@@ -24,8 +26,8 @@ simulate <- function(n, theta){
   u <- runif(n)
   ind <- u < theta[1]
   z <- matrix(NA, ncol = 2, nrow = n)
-  z[!ind] <- fast_rmvnorm(sum(ind), mean = theta[2:3], covariance = theta_star$cov1)
-  z[ind] <- fast_rmvnorm(sum(!ind), mean = theta[4:5], covariance = theta_star$cov2)
+  z[!ind] <- fast_rmvnorm(sum(!ind), mean = theta[2:3], covariance = theta_star$cov1)
+  z[ind] <- fast_rmvnorm(sum(ind), mean = theta[4:5], covariance = theta_star$cov2)
   return(z)
 }
 
@@ -42,7 +44,7 @@ sumstat <- function(z){
 
 
 # initialize dataframes to store samples
-method_names <- c(paste("Rejection"), "MMD", "Wasserstein", "KL divergence")
+method_names <- c("Euc. Summary", "MMD", "Wasserstein", "KL divergence")
 abc_df <- data.frame(methods = rep(method_names, each = nthetas),
                      samples.p = NA,
                      samples.mu01 = NA,
@@ -85,18 +87,20 @@ abc_df[index(2, nthetas), 2:ncol(abc_df)] <- k2abc_out$samples
 
 
 # WABC
-# function to compute 1-Wasserstein distance between observed data and fake data given as argument
-wdistance <- function(y_sorted, y_fake){
-  y_fake <- sort(y_fake)
-  return(mean(abs(y_sorted - y_fake)))
-} 
+# function to compute 1-Wasserstein distance for 2d data
+wdistance <- function(y_true, y_fake){
+  sink("/dev/null")
+  dist <- exact_transport_distance(t(y_true), t(y_fake))
+  sink()
+  return(dist)
+}
 
-args_wabc <- list(nthetas = nthetas, y = sort(y),
+args_wabc <- list(nthetas = nthetas, y = y,
                   rpiror = rprior,
                   simulate = simulate,
                   kernel = "uniform",
                   discrepancy = wdistance,
-                  epsilon = 0.1
+                  epsilon = 5
                  ) 
 
 wabc_out <- rej_abc(args_wabc)
@@ -106,7 +110,6 @@ abc_df[index(3, nthetas), 2:ncol(abc_df)] <- wabc_out$samples
 # KL ABC
 kldist <- function(y, z){
   return(FNN::KLx.divergence(y, z, k = 1))
-  # return(KLx.divergence(y, z, k = 1))
 } 
 
 args_kl <- list(nthetas = nthetas, y = y,
@@ -122,39 +125,57 @@ abc_df[index(4, nthetas), 2:ncol(abc_df)] <- klabc_out$samples
 
 
 # save results
-write.csv(abc_df, "results/normal2d/abc_df.csv", row.names = FALSE)
-abc_df <- read.csv("results/normal2d/abc_df.csv")
+write.csv(abc_df, paste0(resultsprefix, "abc_df.csv"), row.names = FALSE)
+abc_df <- read.csv(paste0(resultsprefix, "/abc_df.csv"))
 
 
 # plot results
-pdf("plots/normal2d/posterior_densities.pdf", width = 14)
-g1 <- ggplot(data = abc_df, aes(x = samples.p, colour = methods)) +
-        geom_density() +
+my_colours <- init_colours()
+pdf(paste0(plotprefix, "posterior_densities.pdf"), width = 14)
+g1 <- ggplot(data = abc_df, aes(x = samples.p, colour = methods, fill = methods)) +
+        geom_density(alpha = 0.5) +
         labs(x = "p") +
+        change_sizes(16, 20) +
+        scale_color_manual(name = "", values = my_colours) +
+        scale_fill_manual(name = "", values = my_colours) +
         geom_vline(xintercept = theta_star$theta[1], linetype = 2) +
         theme(legend.position = "none") 
-g2 <- ggplot(data = abc_df, aes(x = samples.mu01, colour = methods)) +
-        geom_density() +
+g2 <- ggplot(data = abc_df, aes(x = samples.mu01, colour = methods, fill = methods)) +
+        geom_density(alpha = 0.5) +
         labs(x = "mu01") +
+        change_sizes(16, 20) +
+        scale_color_manual(name = "", values = my_colours) +
+        scale_fill_manual(name = "", values = my_colours) +
         geom_vline(xintercept = theta_star$theta[2], linetype = 2) +
         theme(legend.position = "none") 
-g3 <- ggplot(data = abc_df, aes(x = samples.mu02, colour = methods)) +
-        geom_density() +
+g3 <- ggplot(data = abc_df, aes(x = samples.mu02, colour = methods, fill = methods)) +
+        geom_density(alpha = 0.5) +
         labs(x = "mu02") +
+        change_sizes(16, 20) +
+        scale_color_manual(name = "", values = my_colours) +
+        scale_fill_manual(name = "", values = my_colours) +
         geom_vline(xintercept = theta_star$theta[3], linetype = 2) +
         theme(legend.position = "none") 
-g4 <- ggplot(data = abc_df, aes(x = samples.mu11, colour = methods)) +
-        geom_density() +
+g4 <- ggplot(data = abc_df, aes(x = samples.mu11, colour = methods, fill = methods)) +
+        geom_density(alpha = 0.5) +
         labs(x = "mu11") +
+        change_sizes(16, 20) +
+        scale_color_manual(name = "", values = my_colours) +
+        scale_fill_manual(name = "", values = my_colours) +
         geom_vline(xintercept = theta_star$theta[4], linetype = 2) +
         theme(legend.position = "none") 
-g5 <- ggplot(data = abc_df, aes(x = samples.mu12, colour = methods)) +
-        geom_density() +
+g5 <- ggplot(data = abc_df, aes(x = samples.mu12, colour = methods, fill = methods)) +
+        geom_density(alpha = 0.5) +
         labs(x = "mu12") +
+        change_sizes(16, 20) +
+        scale_color_manual(name = "", values = my_colours) +
+        scale_fill_manual(name = "", values = my_colours) +
         geom_vline(xintercept = theta_star$theta[5], linetype = 2) +
         theme(legend.position = "none") 
-g6 <- ggplot(data = abc_df, aes(x = samples.mu01, colour = methods)) +
-        geom_density() +
+g6 <- ggplot(data = abc_df, aes(x = samples.mu01, colour = methods, fill = methods)) +
+        geom_density(alpha = 0.5) +
+        scale_color_manual(name = "", values = my_colours) +
+        scale_fill_manual(name = "", values = my_colours) +
         theme(
           legend.position = c(.5, .6),
           legend.justification = c("center"),
@@ -167,7 +188,7 @@ dev.off()
 
 # plot contours
 plot_and_save_contour <- function(method){
-  pdf(paste0("plots/normal2d/contour_", method, ".pdf"), width = 14)
+  pdf(paste0(plotprefix, "contour_", method, ".pdf"), width = 14)
   g1 <- ggplot(filter(abc_df, methods == method),
               aes(x = samples.mu01, y = samples.mu02)
               ) +
@@ -178,6 +199,7 @@ plot_and_save_contour <- function(method){
           xlim(-1, 1) +
           ylim(-1, 1) +
           ggtitle(method) +
+          change_sizes(16, 20) +
           geom_vline(xintercept = theta_star$theta[2], linetype = 2) +
           geom_hline(yintercept = theta_star$theta[3], linetype = 2) +
           theme(legend.position = "none") 
@@ -190,6 +212,7 @@ plot_and_save_contour <- function(method){
           labs(y = "mu12") +
           xlim(-1, 1) +
           ylim(-1, 1) +
+          change_sizes(16, 20) +
           geom_vline(xintercept = theta_star$theta[4], linetype = 2) +
           geom_hline(yintercept = theta_star$theta[5], linetype = 2) +
           theme(legend.position = "none") 

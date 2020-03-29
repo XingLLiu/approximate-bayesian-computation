@@ -7,8 +7,10 @@ theta_star <- list(a = 3, b = 1, g = 2, k = 0.5)
 theta_star_vec <- c(theta_star$a, theta_star$b, theta_star$g, theta_star$k)
 hyperparams <- list(burnin = 50000, thinning = 10)
 epsilon <- c(0.1)
-nobservation <- 250
+nobservation <- 1000
 nthetas <- 1024
+resultsprefix <- "results/gandk1d/"
+plotprefix <- "plots/gandk1d/"
 
 # prior is uniform [0,10] on each parameter
 rprior <- function(N, parameters){
@@ -51,6 +53,7 @@ target <- list(rprior = rprior,
 y <- target$simulate(theta_star_vec)
 
 # tuning params for MCMC
+source("src/mcmc/mh.R")
 tuning_parameters <- list(niterations = (nthetas - 1) * hyperparams$thinning + hyperparams$burnin + 1, 
                           nchains = 1,
                           cov_proposal = diag(1e-2, 4),
@@ -62,8 +65,8 @@ tuning_parameters <- list(niterations = (nthetas - 1) * hyperparams$thinning + h
 # mhout.df <- mhout.df %>% dplyr::filter(iteration > hyperparams$burnin,
 #                                        iteration %% hyperparams$thinning == 1)
 
-# write.csv(mhout.df, "results/soft_abc/gandk1d/gandk_mcmc.csv", row.names = FALSE)
-mhout.df <- read.csv("results/soft_abc/gandk1d/gandk_mcmc.csv", header = TRUE)
+# write.csv(mhout.df, paste0(resultsprefix, "gandk_mcmc.csv"), row.names = FALSE)
+mhout.df <- read.csv(paste0(resultsprefix, "gandk_mcmc.csv"), header = TRUE)
 
 
 # data-generating process
@@ -162,11 +165,11 @@ abc_df[index(4, nthetas), 2:5] <- klabc_out$samples
 
 
 # save results
-write.csv(abc_df, "results/soft_abc/gandk1d/abc_df.csv", row.names = FALSE)
-abc_df <- read.csv("results/soft_abc/gandk1d/abc_df.csv")
+write.csv(abc_df, paste0(resultsprefix, "abc_df.csv"), row.names = FALSE)
+abc_df <- read.csv(paste0(resultsprefix, "abc_df.csv"))
 
 # plot results
-pdf("plots/gandk1d/gandk1d_eg.pdf")
+pdf(paste0(plotprefix, "gandk1d_eg.pdf"))
 g1 <- ggplot(mhout.df, aes(x = X.1)) + 
         geom_density() + 
         geom_vline(xintercept = theta_star_vec[1], linetype = 2)

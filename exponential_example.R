@@ -2,11 +2,11 @@
 library(ggplot2)
 set.seed(2020)
 theta_star <- list(lambda = 2)
-hyperparams <- list(alpha = 1, beta = 1)
-epsilon <- c(0.01, 0.05, 0.1, 0.5, 1)
+hyperparams <- list(alpha = 2, beta = 2)
+epsilon <- c(0.01, 0.05, 0.1, 0.5, 1, 2)
 nobservation <- 1
 nthetas <- 1024
-y <- matrix(rexp(nobservation, theta_star$lambda), nocl = 1)
+y <- matrix(rexp(nobservation, theta_star$lambda), ncol = 1)
 
 
 # Gamma prior
@@ -15,7 +15,7 @@ rprior <- function(n){ return(rgamma(n, shape = hyperparams$alpha, rate = hyperp
 simulate <- function(n, theta){ return(matrix(rexp(n, rate = theta), ncol = 1)) }
 
 # initialize dataframe to store the true density
-thetavals <- seq(0, 10, length.out = nthetas)
+thetavals <- seq(0, 7.5, length.out = nthetas)
 posterior_df <- data.frame(thetavals = thetavals,
                            true_posterior = NA,
                            abc_posterior = NA
@@ -26,17 +26,19 @@ posterior_df$true_posterior <- dgamma(thetavals,
                                       rate = hyperparams$beta + sum(y))
 
 # exact abc posterior (for n = 1)
-abcposterior_func <- function(theta){
-  const <- gamma(hyperparams$alpha) * (1 / (hyperparams$beta + y - epsilon[1])^hyperparams$alpha - 
-                                       1 / (hyperparams$beta + y + epsilon[1])^hyperparams$alpha
+abcposterior_func <- function(theta, epsilonval){
+  const <- gamma(hyperparams$alpha) * (1 / (hyperparams$beta + c(y) - epsilonval)^hyperparams$alpha - 
+                                       1 / (hyperparams$beta + c(y) + epsilonval)^hyperparams$alpha
                                       )
   return(
-          theta^(hyperparams$alpha - 1) * exp(- (hyperparams$beta + y) * theta) * 
-                ( exp(epsilon[1] * theta) - exp(- epsilon[1] * theta) ) * (theta > 0) / const 
+          theta^(hyperparams$alpha - 1) * exp(- (hyperparams$beta + c(y)) * theta) * 
+                ( exp(epsilonval * theta) - exp(- epsilonval * theta) ) * (theta > 0) / const 
         )
 }
 
-posterior_df$abc_posterior <- abcposterior_func(thetavals)
+posterior_df$abc_posterior <- abcposterior_func(thetavals, epsilon[1])
+
+
 
 # initialize arguments
 source("src/rej_abc.R")
@@ -52,6 +54,10 @@ method_names <- paste("epsilon =", epsilon)
 abc_df <- data.frame(methods = rep(method_names, each = nthetas),
                      samples = NA
                     )
+posterior_df2 <- data.frame(methods = rep(method_names, each = nthetas),
+                     thetas = rep(thetavals, length(method_names)),
+                     densities = NA
+                    )
 
 # rejection abc
 for (i in 1:length(epsilon)){
@@ -59,21 +65,36 @@ for (i in 1:length(epsilon)){
   args$epsilon <- epsilon[i]
   samples_df <- rej_abc(args)
   abc_df$samples[(1 + (i - 1) * nthetas): (i * nthetas)] <- samples_df$samples
+  # exact abc posterior densities
+  posterior_df2$densities[(1 + (i - 1) * nthetas): (i * nthetas)] <- abcposterior_func(thetavals, epsilon[i])
 }
 
-plt_color <- scales::seq_gradient_pal(rgb(1, 0.5, 0.5), "darkblue")(seq(0, 1, length.out = length(epsilon)))
-plt <- ggplot(abc_df) +
-        # geom_line(data = posterior_df, aes(x = thetavals, y = abc_posterior), colour = "grey") +
-        geom_density(aes(x = samples, colour = methods)) +
+
+# plot results
+plt_color <- init_discrete_grad_colours(length(epsilon))
+plt <- ggplot(posterior_df) +
+        geom_line(aes(x = thetavals, y = true_posterior)) +
+        geom_ribbon(aes(x = thetavals, ymax = true_posterior), ymin = 0, alpha = 0.5) +
+        geom_density(data = abc_df, aes(x = samples, colour = methods)) +
         scale_color_manual(values = plt_color) +
-        geom_line(data = posterior_df, aes(x = thetavals, y = true_posterior), colour = "black") +
         geom_vline(xintercept = theta_star$lambda, linetype = "dashed") +
         labs(x = "theta", y = "density") +
-        theme(
-              legend.position = c(.95, .95),
-              legend.justification = c("right", "top"),
-              legend.title=element_blank()
-             ) +
-        guides(color = guide_legend(override.aes = list(linetype = "solid")))
+        xlim(0, 7.5) +
+        change_sizes(16, 20) +
+        add_legend(0.95, 0.95)
 
 ggsave(plt, file = "plots/soft_abc/exponential_eg.pdf", height = 5)
+
+# exact abc posterior densities
+plt <- ggplot(posterior_df) +
+        geom_line(aes(x = thetavals, y = true_posterior)) +
+        geom_ribbon(aes(x = thetavals, ymax = true_posterior), ymin = 0, alpha = 0.5) +
+        geom_line(data = posterior_df2, aes(x = thetas, y = densities, colour = methods)) +
+        scale_color_manual(values = plt_color) +
+        geom_vline(xintercept = theta_star$lambda, linetype = "dashed") +
+        labs(x = "theta", y = "density") +
+        xlim(0, 7.5) +
+        change_sizes(16, 20) +
+        add_legend(0.95, 0.95)
+
+ggsave(plt, file = "plots/soft_abc/exponential_eg_exact.pdf", height = 5)
