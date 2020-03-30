@@ -45,8 +45,8 @@ compare_distances_fun <- function(i){
   }
 
   # save results
-  write.csv(dist, paste0(resultsprefix, "distances.csv"), row.names = FALSE)
-  dist <- read.csv(paste0(resultsprefix, "distances.csv"))
+  write.csv(dist, paste0(resultsprefix, "dim", ydim[i],"distances.csv"), row.names = FALSE)
+  dist <- read.csv(paste0(resultsprefix, "dim", ydim[i],"distances.csv"))
 
 
   # integrate results into one dataframe
