@@ -254,12 +254,12 @@ for (method in method_names){
 }
 
 # plot data
-pdf(paste0(plotprefix, "contour_", method, ".pdf"), width = 14)
+pdf(paste0(plotprefix, "data.pdf"), width = 14)
 g1 <- ggplot(data.frame(y1 = y[, 1], y2 = y[, 2]),
               aes(x = y1, y = y2)
             ) +
       geom_point(size = 1.5) +
-      scale_color_manual(values = "grey", alpha = 0.5) +
+      scale_color_manual(values = "grey") +
       labs(x = "y1") +
       labs(y = "y2") +
       xlim(-1, 1) +
@@ -270,6 +270,7 @@ g1 <- ggplot(data.frame(y1 = y[, 1], y2 = y[, 2]),
       geom_vline(xintercept = theta_star$theta[4], linetype = 2) +
       geom_hline(yintercept = theta_star$theta[5], linetype = 2) +
       theme(legend.position = "none") 
+g1
 dev.off()
 
 

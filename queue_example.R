@@ -1,7 +1,7 @@
 # M/G/1 queuing model
 # Only theta_\ast = (\theta_1, \theta2 - \theta1, \theta3)
-library(ggplot2)
 library(winference)
+library(ggplot2)
 source("src/rej_abc.R")
 source("src/soft_abc.R")
 source("src/sabc.R")
@@ -13,10 +13,9 @@ theta_star_list <- list(theta1 = theta_star$theta[1],
                           theta2minus1 = theta_star$theta[2],
                           theta3 = theta_star$theta[3]
                         )
-epsilon <- c(1)   # c(0.05, 0.1, 0.5, 1)
 nobservation <- 50
 nthetas <- 1024
-maxsimulation <- 10^7
+maxsimulation <- 10^6
 resultsprefix <- "results/queue/"
 plotprefix <- "plots/queue/"
 
@@ -188,43 +187,6 @@ g3 <- ggplot(data = mcmc.df, aes(x = theta3, fill = "Posterior", colour = "Poste
         theme(legend.position = "none")
 gridExtra::grid.arrange(g1, g2, g3, ncol = 3)
 dev.off()
-
-# # plot contours
-# plot_and_save_contour <- function(method){
-#   pdf(paste0(plotprefix, "contour_", method, ".pdf"), width = 14)
-#   g1 <- ggplot(filter(abc_df, methods == method),
-#               aes(x = samples.mu01, y = samples.mu02)
-#               ) +
-#           geom_density_2d(aes(color = ..level..), size = 1.5) +
-#           scale_color_viridis_c() +
-#           labs(x = "mu01") +
-#           labs(y = "mu02") +
-#           xlim(-1, 1) +
-#           ylim(-1, 1) +
-#           ggtitle(method) +
-#           geom_vline(xintercept = theta_star$theta[2], linetype = 2) +
-#           geom_hline(yintercept = theta_star$theta[3], linetype = 2) +
-#           theme(legend.position = "none")
-#   g2 <- ggplot(filter(abc_df, methods == method),
-#               aes(x = samples.mu11, y = samples.mu12)
-#               ) +
-#           geom_density_2d(aes(color = ..level..), size = 1.5) +
-#           scale_color_viridis_c() +
-#           labs(x = "mu11") +
-#           labs(y = "mu12") +
-#           xlim(-1, 1) +
-#           ylim(-1, 1) +
-#           geom_vline(xintercept = theta_star$theta[4], linetype = 2) +
-#           geom_hline(yintercept = theta_star$theta[5], linetype = 2) +
-#           theme(legend.position = "none") 
-#   gridExtra::grid.arrange(g1, g2, ncol = 2)
-#   dev.off()
-# }
-
-# for (method in method_names){
-#   plot_and_save_contour(method)
-# }
-
 
 
 
