@@ -156,7 +156,7 @@ abc_df[index(4, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(klabc_out)[, 
 
 # save results
 write.csv(abc_df, paste0(resultsprefix, "abc_df.csv"), row.names = FALSE)
-abc_df <- read.csv(paste0(resultsprefix, "/abc_df.csv"))
+abc_df <- read.csv(paste0(resultsprefix, "abc_df.csv"))
 
 
 # plot results
@@ -270,8 +270,15 @@ g1 <- ggplot(data.frame(y1 = y[, 1], y2 = y[, 2]),
       geom_vline(xintercept = theta_star$theta[4], linetype = 2) +
       geom_hline(yintercept = theta_star$theta[5], linetype = 2) +
       theme(legend.position = "none") 
-g1
 dev.off()
 
 
-
+# computational times
+ztemp <- simulate(theta_star$theta)
+print("Computational times of one evaluation:")
+microbenchmark::microbenchmark(
+                                eucdiscrep(ztemp),
+                                mmdsq(ztemp),
+                                wdistance(ztemp),
+                                kldist(ztemp)
+                              )

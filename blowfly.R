@@ -18,7 +18,7 @@ theta_names <- c("P", "delta", "N0", "sigma.d", "sigma.p", "tau")
 # hyperparams <- list(m = 1, tau = 2)
 nobservation <- 180
 nthetas <- 1024
-maxsimulation <- 10^6
+maxsimulation <- 5 * 10^6
 resultsprefix <- "results/blowfly/"
 plotprefix <- "plots/blowfly/"
 
@@ -201,65 +201,23 @@ g6 <- ggplot(data = abc_df, aes(x = samples.delta, colour = methods, fill = meth
 gridExtra::grid.arrange(g1, g2, g3, g4, g5, g6, ncol = 3)
 dev.off()
 
-# # plot contours
-# plot_and_save_contour <- function(method){
-#   pdf(paste0(plotprefix, "contour_", method, ".pdf"), width = 14)
-#   g1 <- ggplot(filter(abc_df, methods == method),
-#               aes(x = samples.mu01, y = samples.mu02)
-#               ) +
-#           geom_density_2d(aes(color = ..level..), size = 1.5) +
-#           scale_color_viridis_c() +
-#           labs(x = "mu01") +
-#           labs(y = "mu02") +
-#           xlim(-1, 1) +
-#           ylim(-1, 1) +
-#           change_sizes(16, 20) +
-#           geom_vline(xintercept = theta_star$theta[2], linetype = 2) +
-#           geom_hline(yintercept = theta_star$theta[3], linetype = 2) +
-#           theme(legend.position = "none") 
-#   g2 <- ggplot(filter(abc_df, methods == method),
-#               aes(x = samples.mu11, y = samples.mu12)
-#               ) +
-#           geom_density_2d(aes(color = ..level..), size = 1.5) +
-#           scale_color_viridis_c() +
-#           labs(x = "mu11") +
-#           labs(y = "mu12") +
-#           xlim(-1, 1) +
-#           ylim(-1, 1) +
-#           change_sizes(16, 20) +
-#           geom_vline(xintercept = theta_star$theta[4], linetype = 2) +
-#           geom_hline(yintercept = theta_star$theta[5], linetype = 2) +
-#           theme(legend.position = "none") 
-#   gridExtra::grid.arrange(g1, g2, ncol = 2)
-#   dev.off()
-# }
-
-# for (method in method_names){
-#   plot_and_save_contour(method)
-# }
-
-# # plot data
-# pdf(paste0(plotprefix, "contour_", method, ".pdf"), width = 14)
-# g1 <- ggplot(data.frame(y1 = y[, 1], y2 = y[, 2]),
-#               aes(x = y1, y = y2)
-#             ) +
-#       geom_point(size = 1.5) +
-#       scale_color_manual(values = "grey", alpha = 0.5) +
-#       labs(x = "y1") +
-#       labs(y = "y2") +
-#       xlim(-1, 1) +
-#       ylim(-1, 1) +
-#       change_sizes(16, 20) +
-#       geom_vline(xintercept = theta_star$theta[2], linetype = 2) +
-#       geom_hline(yintercept = theta_star$theta[3], linetype = 2) +
-#       geom_vline(xintercept = theta_star$theta[4], linetype = 2) +
-#       geom_hline(yintercept = theta_star$theta[5], linetype = 2) +
-#       theme(legend.position = "none") 
-# dev.off()
-
-
-
-
+# pot realizations
+obs_df <- data.frame(time = blowfly[, 2], y = blowfly[, 1], lab = "real")
+posterior_means <- matrix(NA, nrow = length(method_names), ncol = length(theta_names))
+realizations_colours <- c(real = "grey50", "1" = "chocolate", "2" = "purple", "3" = "darkblue")
+for (i in 1:(length(method_names) - 1)){
+  posterior_means[i, ] <- colMeans(filter(abc_df, methods == method_names[i])[, 2:7])
+  obsfake_df <- rbind(obs_df,
+                      data.frame(time = blowfly[, 2], y = simulate(posterior_means[i, ]), lab = "1")
+                     )
+  plt <- ggplot(obsfake_df, aes(x = time, y = y, colour = lab)) +
+          geom_line(size = 1.2) +
+          scale_color_manual(name = "", values = realizations_colours) +
+          labs(x = "time", y = "number of blowflies") +
+          change_sizes(16, 20) +
+          theme(legend.position = "none") 
+  ggsave(plt, file = paste0(plotprefix, "realizations_", method_names[i], ".pdf"), width = 14)
+}
 
 
 
