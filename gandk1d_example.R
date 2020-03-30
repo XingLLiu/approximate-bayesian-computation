@@ -2,22 +2,29 @@
 source("src/mcmc/mh.R")
 source("src/gandk/gandk.R")
 source("src/rej_abc.R")
+source("src/sabc.R")
 set.seed(2020)
 theta_star <- list(a = 3, b = 1, g = 2, k = 0.5)
 theta_star_vec <- c(theta_star$a, theta_star$b, theta_star$g, theta_star$k)
+theta_names <- c("a", "b", "g", "k")
+theta_star_list <- list(a = theta_star$theta[1],
+                          b = theta_star$theta[2],
+                          g = theta_star$theta[3],
+                          k = theta_star$theta[4]
+                        )
 hyperparams <- list(burnin = 50000, thinning = 10)
-epsilon <- c(0.1)
 nobservation <- 1000
 nthetas <- 1024
+maxsimulation <- 10^5
 resultsprefix <- "results/gandk1d/"
 plotprefix <- "plots/gandk1d/"
 
 # prior is uniform [0,10] on each parameter
-rprior <- function(N, parameters){
+rprior <- function(N, hyperparams){
   return(matrix(runif(N * 4, min = 0, max = 10), ncol = 4))
 }
-# evaluate the log-density of the prior, for each particle
-dprior <- function(thetaparticles, parameters){
+# log dprior
+dprior <- function(thetaparticles, hyperparams){
   densities <- rep(0, nrow(thetaparticles))
   for (i in 1:nrow(thetaparticles)){
     if (any(thetaparticles[i, ] > 10) || any(thetaparticles[i, ] < 0)){
@@ -41,16 +48,18 @@ loglikelihood <- function(theta, ys, ...){
   return(logdgandk(ys, theta, ...))
 }
 
+y <- simulate(theta_star_vec)
+
 target <- list(rprior = rprior,
                dprior = dprior,
                simulate = simulate,
                loglikelihood = loglikelihood,
                parameter_names = c("a", "b", "g", "k"),
                parameters = list(),
-               thetadim = 4,
-               ydim = 1)
+               thetadim = length(theta_names),
+               ydim = ncol(y)
+              )
 
-y <- target$simulate(theta_star_vec)
 
 # tuning params for MCMC
 source("src/mcmc/mh.R")
@@ -68,25 +77,25 @@ tuning_parameters <- list(niterations = (nthetas - 1) * hyperparams$thinning + h
 # write.csv(mhout.df, paste0(resultsprefix, "gandk_mcmc.csv"), row.names = FALSE)
 mhout.df <- read.csv(paste0(resultsprefix, "gandk_mcmc.csv"), header = TRUE)
 
-
-# data-generating process
-simulate <- function(n, theta){
-  return(matrix(qgandk(runif(n), theta), ncol = 1))
-}
-
 # summary statistic
 sumstat <- function(z){
   s <- rep(0, 4)
-  octiles <- quantile(z, probs = (1:7)/10)
+  octiles <- quantile(z, probs = (1:7)/8) # quantile(z, probs = (1:7)/10)
   s[1] <- octiles[4]
   s[2] <- octiles[6] - octiles[2]
   s[3] <- (octiles[6] + octiles[2] - 2 * octiles[4]) / s[2]
   s[4] <- (octiles[7] - octiles[5] + octiles[3] - octiles[1]) / s[2]
-  return(s)
+  return(matrix(s, ncol = 1))
+}
+# euclidean discrepancy
+y_summary <- sumstat(y)
+eucdiscrep <- function(z){
+  z_summary <- sumstat(z)
+  return(l2norm(z_summary, y_summary))
 }
 
 # initialize dataframes to store samples
-method_names <- c(paste("epsilon =", epsilon, " uniform"), "MMD", "Wasserstein", "KL divergence")
+method_names <- c("Euc. Summary", "MMD", "Wasserstein", "KL Divergence")
 abc_df <- data.frame(methods = rep(method_names, each = nthetas),
                      samples.a = NA,
                      samples.b = NA,
@@ -95,73 +104,80 @@ abc_df <- data.frame(methods = rep(method_names, each = nthetas),
                     )
 
 # rej ABC
-args_rej <- list(nthetas = nthetas, y = y,
-                  rpiror = rprior,
+args_rej <- list(nthetas = nthetas,
+                  rprior = rprior,
+                  dprior = dprior,
                   simulate = simulate,
-                  kernel = "uniform",
-                  discrepancy = l2norm,
-                  sumstat = sumstat,
-                  epsilon = 0.5 #epsilon[1]
+                  discrepancy = eucdiscrep,
+                  parameter_names = theta_names,
+                  thetadim = length(theta_names),
+                  ydim = ncol(y)
                 )
 
-samples_df <- rej_abc(args_rej)
-abc_df[index(1, nthetas), 2:5] <- samples_df$samples
+rej_out <- sabc(args_rej, maxsimulation = maxsimulation)
+abc_df[index(1, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(rej_out)[, theta_names]
 
 
 # K2 ABC
 source("src/mmd/mmdsq_c.R")
 bandwidth <- median(apply(y, 1, l1norm))
-mmdsq <- function(y, z){ 
+mmdsq <- function(z){ 
   return(mmdsq_c(y, z, bandwidth)) 
 }
 
-args_mmd <- list(nthetas = nthetas, y = y,
-                  rpiror = rprior,
+args_mmd <- list(nthetas = nthetas,
+                  rprior = rprior,
+                  dprior = dprior,
                   simulate = simulate,
-                  kernel = "uniform",
                   discrepancy = mmdsq,
-                  epsilon = 0.05
+                  parameter_names = theta_names,
+                  thetadim = length(theta_names),
+                  ydim = ncol(y)
                 )
 
-k2abc_out <- rej_abc(args_mmd)
-abc_df[index(2, nthetas), 2:5] <- k2abc_out$samples
+mmd_out <- sabc(args_mmd, maxsimulation = maxsimulation)
+abc_df[index(2, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(mmd_out)[, theta_names]
 
 
 # WABC
 # function to compute 1-Wasserstein distance between observed data and fake data given as argument
-wdistance <- function(y_sorted, y_fake){
+y_sorted <- sort(y)
+wdistance <- function(y_fake){
   y_fake <- sort(y_fake)
   return(mean(abs(y_sorted - y_fake)))
 } 
 
-args_wabc <- list(nthetas = nthetas, y = sort(y),
-                  rpiror = rprior,
+args_wabc <- list(nthetas = nthetas,
+                  rprior = rprior,
+                  dprior = dprior,
                   simulate = simulate,
-                  kernel = "uniform",
                   discrepancy = wdistance,
-                  epsilon = 0.5
-                 ) 
+                  parameter_names = theta_names,
+                  thetadim = length(theta_names),
+                  ydim = ncol(y)
+                )
 
-wabc_out <- rej_abc(args_wabc)
-abc_df[index(3, nthetas), 2:5] <- wabc_out$samples
+wabc_out <- sabc(args_wabc, maxsimulation= maxsimulation)
+abc_df[index(3, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(wabc_out)[, theta_names]
 
 
 # KL ABC
-kldist <- function(y, z){
+kldist <- function(z){
   return(FNN::KLx.divergence(y, z, k = 1))
-  # return(KLx.divergence(y, z, k = 1))
 } 
 
-args_kl <- list(nthetas = nthetas, y = y,
-                rpiror = rprior,
-                simulate = simulate,
-                kernel = "uniform",
-                discrepancy = kldist,
-                epsilon = 0.3
-               ) 
+args_kl <- list(nthetas = nthetas,
+                  rprior = rprior,
+                  dprior = dprior,
+                  simulate = simulate,
+                  discrepancy = kldist,
+                  parameter_names = theta_names,
+                  thetadim = length(theta_names),
+                  ydim = ncol(y)
+                )
 
-klabc_out <- rej_abc(args_kl)
-abc_df[index(4, nthetas), 2:5] <- klabc_out$samples
+klabc_out <- sabc(args_kl, maxsimulation= maxsimulation)
+abc_df[index(4, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(klabc_out)[, theta_names]
 
 
 # save results
@@ -169,39 +185,48 @@ write.csv(abc_df, paste0(resultsprefix, "abc_df.csv"), row.names = FALSE)
 abc_df <- read.csv(paste0(resultsprefix, "abc_df.csv"))
 
 # plot results
-pdf(paste0(plotprefix, "gandk1d_eg.pdf"))
-g1 <- ggplot(mhout.df, aes(x = X.1)) + 
+my_colours <- init_colours()
+pdf(paste0(plotprefix, "gandk1d_eg.pdf"), width = 14)
+g1 <- ggplot(mhout.df, aes(x = X.1, fill = "Posterior", colour = "Posterior"), alpha = 0.5) + 
         geom_density() + 
         geom_vline(xintercept = theta_star_vec[1], linetype = 2)
-g2 <- ggplot(mhout.df, aes(x = X.2)) + 
+g2 <- ggplot(mhout.df, aes(x = X.2, fill = "Posterior", colour = "Posterior"), alpha = 0.5) + 
         geom_density() + 
         geom_vline(xintercept = theta_star_vec[2], linetype = 2)
-g3 <- ggplot(mhout.df, aes(x = X.3)) + 
+g3 <- ggplot(mhout.df, aes(x = X.3, fill = "Posterior", colour = "Posterior"), alpha = 0.5) + 
         geom_density() + 
         geom_vline(xintercept = theta_star_vec[3], linetype = 2)
-g4 <- ggplot(mhout.df, aes(x = X.4)) + 
+g4 <- ggplot(mhout.df, aes(x = X.4, fill = "Posterior", colour = "Posterior"), alpha = 0.5) + 
         geom_density() + 
         geom_vline(xintercept = theta_star_vec[4], linetype = 2)
 
-g1 <- g1 + geom_density(data = abc_df, aes(x = samples.a, colour = methods)) +
+g1 <- g1 + geom_density(data = abc_df, aes(x = samples.a, fill = methods, colour = methods), alpha = 0.5) +
+          scale_color_manual(name = "", values = my_colours) +
+          scale_fill_manual(name = "", values = my_colours) +
           labs(x = "a") +
-          xlim(1.5, 5) +
+          xlim(2.5, 3.5) +
+          change_sizes(16, 20) +
           theme(legend.position = "none")
-g2 <- g2 + geom_density(data = abc_df, aes(x = samples.b, colour = methods)) +
+g2 <- g2 + geom_density(data = abc_df, aes(x = samples.b, fill = methods, colour = methods), alpha = 0.5) +
+          scale_color_manual(name = "", values = my_colours) +
+          scale_fill_manual(name = "", values = my_colours) +
           labs(x = "b") +
-          xlim(0, 5) +
-          theme(
-            legend.position = c(.95, .95),
-            legend.justification = c("right", "top"),
-            legend.title = element_blank()
-          )
-g3 <- g3 + geom_density(data = abc_df, aes(x = samples.g, colour = methods)) +
+          xlim(0, 2.5) +
+          change_sizes(16, 20) +
+          add_legend(0.95, 0.95)
+g3 <- g3 + geom_density(data = abc_df, aes(x = samples.g, fill = methods, colour = methods), alpha = 0.5) +
+          scale_color_manual(name = "", values = my_colours) +
+          scale_fill_manual(name = "", values = my_colours) +
           labs(x = "g") +
           xlim(0, 5) +
+          change_sizes(16, 20) +
           theme(legend.position = "none") 
-g4 <- g4 + geom_density(data = abc_df, aes(x = samples.k, colour = methods)) +
+g4 <- g4 + geom_density(data = abc_df, aes(x = samples.k, fill = methods, colour = methods), alpha = 0.5) +
+          scale_color_manual(name = "", values = my_colours) +
+          scale_fill_manual(name = "", values = my_colours) +
           labs(x = "k") +
-          xlim(0, 4) +
+          xlim(0, 1.5) +
+          change_sizes(16, 20) +
           theme(legend.position = "none") 
 
 gridExtra::grid.arrange(g1, g2, g3, g4, ncol = 2)

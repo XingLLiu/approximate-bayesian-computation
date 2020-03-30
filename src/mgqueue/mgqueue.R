@@ -1,38 +1,4 @@
-
-init_queue_model <- function(nobservation, true_theta)
-#' @description Initialize rprior, simulate and y for the M/G/1 queue model.
-{
-  simulate <- function(n, theta){
-    theta1 <- theta[1]
-    theta2 <- theta[2] + theta[1]
-    theta3 <- theta[3]
-    u <- runif(n, theta1, theta2)
-    v <- y <- x <- rep(0, n)
-    v[1] <- rexp(n = 1, rate = theta3)
-    y[1] <- u[1] + v[1]
-    x[1] <- y[1]
-    for (t in 2:n){
-      v[t] <- v[t-1] + rexp(n = 1, rate = theta3)
-      y[t] <- u[t] + max(0, v[t] - x[t-1])
-      x[t] <- x[t-1] + y[t]
-    }
-    return(matrix(y, ncol = 1))
-  }
-
-  y <- simulate(nobservation, true_theta)
-  # Gamma prior
-  upperbd <- min(y, 10)
-  # upperbd <- 10
-  rprior <- function(n){
-    theta1 <- runif(n = n, min = 0, max = upperbd)
-    theta2minus1 <- runif(n = n, min = 0, max = 10)
-    theta3 <- runif(n = n, min = 0, max = 1/3)
-    return(cbind(theta1, theta2minus1, theta3))
-  }
-  return(list(simulate = simulate, rprior = rprior, y = y))
-}
-
-
+# Functions for the M\G\1 queueing model
 
 init_queue_model_smc <- function(n, true_theta)
 #' @description Initialize rprior, simulate and y for the M/G/1 queue model.
@@ -88,7 +54,6 @@ rearrange_queue_params <- function(samples)
 }
 
 
-
 rearrange_queue_params <- function(samples)
 #' @description Rearrange the parameters for the M/G/1 queue model from
 #' (\theta_1, \theta_2 - \theta_1, \theta3) to (\theta_1, \theta_2, \theta3).
@@ -97,4 +62,37 @@ rearrange_queue_params <- function(samples)
   return(samples)
 }
 
+
+init_queue_model <- function(nobservation, true_theta)
+#' @description Initialize rprior, simulate and y for the M/G/1 queue model.
+{
+  simulate <- function(n, theta){
+    theta1 <- theta[1]
+    theta2 <- theta[2] + theta[1]
+    theta3 <- theta[3]
+    u <- runif(n, theta1, theta2)
+    v <- y <- x <- rep(0, n)
+    v[1] <- rexp(n = 1, rate = theta3)
+    y[1] <- u[1] + v[1]
+    x[1] <- y[1]
+    for (t in 2:n){
+      v[t] <- v[t-1] + rexp(n = 1, rate = theta3)
+      y[t] <- u[t] + max(0, v[t] - x[t-1])
+      x[t] <- x[t-1] + y[t]
+    }
+    return(matrix(y, ncol = 1))
+  }
+
+  y <- simulate(nobservation, true_theta)
+  # Gamma prior
+  upperbd <- min(y, 10)
+  # upperbd <- 10
+  rprior <- function(n){
+    theta1 <- runif(n = n, min = 0, max = upperbd)
+    theta2minus1 <- runif(n = n, min = 0, max = 10)
+    theta3 <- runif(n = n, min = 0, max = 1/3)
+    return(cbind(theta1, theta2minus1, theta3))
+  }
+  return(list(simulate = simulate, rprior = rprior, y = y))
+}
 

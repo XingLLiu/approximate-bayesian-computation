@@ -100,6 +100,7 @@ plt <- ggplot(abc_df) +
         geom_density(aes(x = samples, colour = methods)) +
         scale_color_manual(values = plt_color) +
         geom_line(data = posterior_df, aes(x = thetavals, y = true_posterior)) +
+        geom_ribbon(data = posterior_df, aes(x = thetavals, ymax = true_posterior), ymin = 0, alpha = 0.5) +
         geom_vline(xintercept = theta_star$theta, linetype = "dashed") +
         labs(x = "theta", y = "density") +
         xlim(-2, 2) +

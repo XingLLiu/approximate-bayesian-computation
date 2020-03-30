@@ -55,7 +55,7 @@ g_legend<-function(a.gplot){
 # initialize colours
 init_colours <- function()
 {
-  return(c(Wasserstein = "darkblue", MMD = "#56B4E9", `KL divergence` = "darkgreen", Posterior = "grey50",
+  return(c(Wasserstein = "darkblue", MMD = "#56B4E9", `KL Divergence` = "darkgreen", Posterior = "grey50",
             Euclidean = "orange", `Euc. Summary` = "chocolate", Sinkhorn = "purple"))
 }
 
