@@ -104,7 +104,7 @@ plt <- ggplot(abc_df) +
         geom_vline(xintercept = theta_star$theta, linetype = "dashed") +
         labs(x = "theta", y = "density") +
         xlim(-2, 2) +
-        change_sizes(16, 20)
+        change_sizes(16, 20) +
         add_legend(0.95, 0.95)
 
 ggsave(plt, file = "plots/soft_abc/normal1d_eg.pdf", height = 5)
@@ -115,7 +115,7 @@ plt <- ggplot(posterior_df) +
         geom_ribbon(aes(x = thetavals, ymax = true_posterior), ymin = 0, alpha = 0.5) +
         geom_line(data = posterior_df2, aes(x = thetas, y = densities, colour = methods)) +
         scale_color_manual(values = plt_color) +
-        geom_vline(xintercept = theta_star$lambda, linetype = "dashed") +
+        geom_vline(xintercept = theta_star$theta, linetype = "dashed") +
         labs(x = "theta", y = "density") +
         xlim(-2, 2) +
         change_sizes(16, 20) +

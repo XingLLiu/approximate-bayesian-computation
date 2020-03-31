@@ -78,6 +78,7 @@ args_rej <- list(nthetas = nthetas,
 
 rej_out <- sabc(args_rej, maxsimulation = maxsimulation)
 abc_df[index(1, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(rej_out)[, theta_names]
+save(rej_out, file = paste0(resultsprefix, "rej_out.RData"))
 
 
 # K2 ABC
@@ -99,6 +100,7 @@ args_mmd <- list(nthetas = nthetas,
 
 mmd_out <- sabc(args_mmd, maxsimulation = maxsimulation)
 abc_df[index(2, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(mmd_out)[, theta_names]
+save(mmd_out, file = paste0(resultsprefix, "mmd_out.RData"))
 
 
 # WABC
@@ -121,6 +123,7 @@ args_wabc <- list(nthetas = nthetas,
 
 wabc_out <- sabc(args_wabc, maxsimulation = maxsimulation)
 abc_df[index(3, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(wabc_out)[, theta_names]
+save(wabc_out, file = paste0(resultsprefix, "wabc_out.RData"))
 
 
 # # KL ABC
@@ -128,18 +131,20 @@ abc_df[index(3, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(wabc_out)[, t
 #   return(FNN::KLx.divergence(y, z, k = 1))
 # } 
 
-# args_kl <- list(nthetas = nthetas,
-#                   rprior = rprior,
-#                   dprior = dprior,
-#                   simulate = simulate,
-#                   discrepancy = kldist,
-#                   parameter_names = theta_names,
-#                   thetadim = length(theta_names),
-#                   ydim = ncol(y)
-#                 )
+args_kl <- list(nthetas = nthetas,
+                  rprior = rprior,
+                  dprior = dprior,
+                  simulate = simulate,
+                  discrepancy = kldist,
+                  parameter_names = theta_names,
+                  thetadim = length(theta_names),
+                  ydim = ncol(y),
+                  kernel = "uniform",
+                  epsilon = 0.1
+                )
 
-# klabc_out <- sabc(args_kl, maxsimulation= maxsimulation)
-# abc_df[index(4, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(klabc_out)[, theta_names]
+klabc_out <- sabc(args_kl, maxsimulation = maxsimulation)
+abc_df[index(4, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(klabc_out)[, theta_names]
 
 
 # save results
@@ -157,7 +162,8 @@ g1 <- ggplot(data = abc_df, aes(x = samples.P, colour = methods, fill = methods)
         scale_color_manual(name = "", values = my_colours) +
         scale_fill_manual(name = "", values = my_colours) +
         # geom_vline(xintercept = theta_star_list$P, linetype = 2) +
-        theme(legend.position = "none") 
+        theme(legend.position = "none") +
+        add_legend(0.95, 0.95)
 g2 <- ggplot(data = abc_df, aes(x = samples.N0, colour = methods, fill = methods)) +
         geom_density(alpha = 0.5) +
         labs(x = "N0") +
@@ -218,6 +224,22 @@ for (i in 1:(length(method_names) - 1)){
           theme(legend.position = "none") 
   ggsave(plt, file = paste0(plotprefix, "realizations_", method_names[i], ".pdf"), width = 14)
 }
+
+
+for (i in 2:(length(method_names) - 1)){
+  # posterior_means[i, ] <- colMeans(filter(abc_df, methods == method_names[i])[, 2:7]) c(8, 0.2, 14, 0.8, 0.3, 7)
+  obsfake_df <- rbind(obs_df,
+                      data.frame(time = blowfly[, 2], y = simulate(posterior_means[1, ]), lab = "1")
+                     )
+  plt <- ggplot(obsfake_df, aes(x = time, y = y, colour = lab)) +
+          geom_line(size = 1.2) +
+          scale_color_manual(name = "", values = realizations_colours) +
+          labs(x = "time", y = "number of blowflies") +
+          change_sizes(16, 20) +
+          theme(legend.position = "none") 
+  ggsave(plt, file = paste0(plotprefix, "haha_realizations_", method_names[i], ".pdf"), width = 14)
+}
+
 
 
 

@@ -1,5 +1,5 @@
-library("winference")
-library("rje")
+library(winference)
+library(rje)
 source("src/metrics.R")
 source("src/mmd/mmdsq_c.R")
 # register parallel cores
@@ -58,21 +58,64 @@ compare_distances_fun <- function(i){
 
 
   # plot results
-  my_colours <- init_colours()
-  plt <-  ggplot(data = dist.df, aes(x = thetas, y = distances, colour = methods)) +
+  # my_colours <- init_colours()
+  g1 <-  ggplot(data = dist.df, aes(x = thetas, y = distances, colour = methods)) +
             geom_point() +
             labs(x = "theta") +
             change_sizes(16, 20) +
             # scale_color_manual(name = "", values = my_colours) +
             geom_vline(xintercept = theta0, linetype = 2) +
-            theme(legend.position = "none") +
             add_legend(0.95, 0.95)
-  ggsave(plt, file = paste0(plotprefix, "dim", ydim[i], ".pdf"))
+  ggsave(g1, file = paste0(plotprefix, "dim", ydim[i], ".pdf"))
+  # plot mmd alone
+  g2 <- g1 + ylim() 
 }
 
 
 # run function
-for (i in 2:length(ydim)){
+for (i in 1:length(ydim)){
   compare_distances_fun(i)
 }
+
+
+
+# check assumption 5
+check_assumption_plots <- function(i){
+  dist2 <- read.csv(paste0(resultsprefix, "dim", ydim[i],"distances.csv"))
+  dist2$rho_theta <- sapply(theta_vec, FUN = function(a){ l2norm(a, theta0) })
+  pdf(paste0(plotprefix, "check_assumption_dim", ydim[i], ".pdf"), width = 14)
+  g1 <- ggplot(dist2, aes(x = Wasserstein, y = rho_theta)) +
+          geom_point(colour = "darkblue") +
+          labs(x = "Wasserstein distances", y = "|theta - theta_star|") +
+          change_sizes(16, 20) +
+          theme(legend.position = "none")
+  g2 <- ggplot(dist2, aes(x = MMD, y = rho_theta)) +
+          geom_point(colour = "orange") +
+          labs(x = "MMD^2", y = "|theta - theta_star|") +
+          change_sizes(16, 20) +
+          theme(legend.position = "none")
+  gridExtra::grid.arrange(g1, g2, ncol = 2)
+  dev.off()
+  # log scale
+  pdf(paste0(plotprefix, "check_assumption_dim", ydim[i], "_log.pdf"), width = 14)
+  g1 <- ggplot(dist2, aes(x = log(Wasserstein), y = log(rho_theta))) +
+          geom_point(colour = "darkblue") +
+          labs(x = "log Wasserstein distances", y = "log |theta - theta_star|") +
+          change_sizes(16, 20) +
+          theme(legend.position = "none")
+  g2 <- ggplot(dist2, aes(x = log(MMD), y = log(rho_theta))) +
+          geom_point(colour = "orange") +
+          labs(x = "log MMD^2", y = "log |theta - theta_star|") +
+          change_sizes(16, 20) +
+          theme(legend.position = "none")
+  gridExtra::grid.arrange(g1, g2, ncol = 2)
+  dev.off()
+}
+
+# run function2
+for (i in (1:length(ydim))){
+  check_assumption_plots(i)
+}
+
+
 

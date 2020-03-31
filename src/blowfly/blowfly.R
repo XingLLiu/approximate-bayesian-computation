@@ -10,7 +10,7 @@ init_blowfly_model <- function(n)
     sigma.d = theta[4]
     sigma.p = theta[5]
     tau = round(theta[6])
-    burnin <- 50
+    burnin <- 500
     if (tau == 0){
       tau <- 1
     }
@@ -22,17 +22,17 @@ init_blowfly_model <- function(n)
     eps_t <- rgamma(burnin + n, shape = 1 / (sigma.d^2), rate = sigma.d^2)
     e_t <- rgamma(burnin + n, shape = 1 / (sigma.p^2), rate = sigma.p^2)
 
-    outputs <- simulate_c(n, burnin, lag, eps_t, e_t, P, delta, N0,
-                          sigma.d, sigma.p, tau, outputs)
+    # outputs <- simulate_c(n, burnin, lag, eps_t, e_t, P, delta, N0,
+    #                       sigma.d, sigma.p, tau, outputs)
       # return(simulate_c(n, burnin, lag, theta$P, theta$delta, theta$N0,
     #                   theta$sigma.d, theta$sigma.p, theta$tau)
     #       )
-    # for (i in 1:(n + burnin)){
-    #   t <- i + lag
-    #   tau_t <- t - lag
-    #   outputs[t] <- P * outputs[tau_t] * exp(- outputs[tau_t] / N0) * e_t[i] + 
-    #                   outputs[t - 1] * exp(- delta * eps_t[i])
-    # }
+    for (i in 1:(n + burnin)){
+      t <- i + lag
+      tau_t <- t - lag
+      outputs[t] <- P * outputs[tau_t] * exp(- outputs[tau_t] / N0) * e_t[i] + 
+                      outputs[t - 1] * exp(- delta * eps_t[i])
+    }
     return(matrix(outputs[-(1: (lag + burnin))], ncol = 1))
   }
 
