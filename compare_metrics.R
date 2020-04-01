@@ -65,10 +65,14 @@ compare_distances_fun <- function(i){
             change_sizes(16, 20) +
             # scale_color_manual(name = "", values = my_colours) +
             geom_vline(xintercept = theta0, linetype = 2) +
-            add_legend(0.95, 0.95)
+            theme(legend.position = "none") 
+  if (i == 1){
+    g1 <- g1 + add_legend(0.95, 0.95)
+  }
   ggsave(g1, file = paste0(plotprefix, "dim", ydim[i], ".pdf"))
   # plot mmd alone
-  g2 <- g1 + ylim() 
+  g2 <- g1 + ylim(-0.3, 0.6) + theme(legend.position = "none") 
+  ggsave(g2, file = paste0(plotprefix, "enlarged_dim", ydim[i], ".pdf"))
 }
 
 
@@ -119,3 +123,21 @@ for (i in (1:length(ydim))){
 
 
 
+# compare computational times
+for (i in (2:length(ydim))){
+  set.seed(2020)
+  y <- fast_rmvnorm(nobservation, mean = rep(0, ydim[i]), covariance = theta0 * diag(1, ydim[i]))
+  z <- fast_rmvnorm(nobservation, 
+                    mean = rep(0, ydim[i]),
+                    covariance = theta_vec[1] * diag(1, ydim[i])
+                    )
+  w1 <- rep(1/nobservation, nobservation)
+  w2 <- rep(1/nobservation, nobservation)
+  bandwidth <- median(apply(y, 1, l1norm))
+  C <- cost_matrix_L2(t(y), t(matrix(z, ncol = ydim[i])))
+  microbenchmark::microbenchmark(
+                                "MMD" = mmdsq_c(y, matrix(z, ncol = ydim[i]), bandwidth),
+                                "Wasserstein" = exact_transport_given_C(w1, w2, C, p = 1),
+                                "KL.divergence" = FNN::KLx.divergence(y, matrix(z, ncol = ydim[i]), k = 1)[1]
+                                )
+}
