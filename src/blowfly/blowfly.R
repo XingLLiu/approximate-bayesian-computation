@@ -51,15 +51,17 @@ init_blowfly_model <- function(n)
 
   # log dprior
   dprior <- function(theta, hyperparams){
-    eval <- dnorm(theta[, 1], 2, 2, log = TRUE) - theta[, 1] +
-              dnorm(theta[, 2], -1, 0.4, log = TRUE) - theta[, 2] +
-              dnorm(theta[, 3], 5, 0.5, log = TRUE) - theta[, 3] +
-              dnorm(theta[, 4], -0.5, log = TRUE) - theta[, 4] +
-              dnorm(theta[, 5], -0.5, log = TRUE) - theta[, 5] +
-              dnorm(theta[, 6], 2, log = TRUE) - theta[, 6]
+    logtheta <- log(theta)
+    eval <- dnorm(logtheta[, 1], 2, 2, log = TRUE) - logtheta[, 1] +
+              dnorm(logtheta[, 2], -1, 0.4, log = TRUE) - logtheta[, 2] +
+              dnorm(logtheta[, 3], 5, 0.5, log = TRUE) - logtheta[, 3] +
+              dnorm(logtheta[, 4], -0.5, log = TRUE) - logtheta[, 4] +
+              dnorm(logtheta[, 5], -0.5, log = TRUE) - logtheta[, 5] +
+              dnorm(logtheta[, 6], 2, log = TRUE) - logtheta[, 6]
     for (i in 1:nrow(theta)){
       if (any(theta[i, ] < 0)){
         eval[i] <- -Inf   
+        warning("Values of parameter thetas should not be negative! Check the parameter prior.")
       }
     }
     return(eval)

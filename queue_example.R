@@ -157,7 +157,7 @@ abc_df <- read.csv(paste0(resultsprefix, "abc_df.csv"))
 
 # plot results
 my_colours <- init_colours()
-pdf(paste0(plotprefix, "posterior_densities.pdf"), width = 14)
+pdf(paste0(plotprefix, "posterior_densities.pdf"), width = 21)
 g1 <- ggplot(data = mcmc.df, aes(x = theta1, fill = "Posterior", colour = "Posterior"), alpha = 0.5) +
         geom_density() +
         geom_density(data = abc_df, aes(x = samples.theta1, fill = methods, colour = methods), alpha = 0.5) +
@@ -166,7 +166,7 @@ g1 <- ggplot(data = mcmc.df, aes(x = theta1, fill = "Posterior", colour = "Poste
         labs(x = "theta1") +
         change_sizes(16, 20) +
         geom_vline(xintercept = theta_star$theta[1], linetype = 2) +
-        add_legend(0.65, 0.95)
+        add_legend(0.45, 0.95)
 g2 <- ggplot(data = mcmc.df, aes(x = theta2minus1, fill = "Posterior", colour = "Posterior"), alpha = 0.5) +
         geom_density() +
         geom_density(data = abc_df, aes(x = samples.theta2minus1, fill = methods, colour = methods), alpha = 0.5) +

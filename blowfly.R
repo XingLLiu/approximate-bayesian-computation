@@ -127,9 +127,9 @@ save(wabc_out, file = paste0(resultsprefix, "wabc_out.RData"))
 
 
 # # KL ABC
-# kldist <- function(z){
-#   return(FNN::KLx.divergence(y, z, k = 1))
-# } 
+kldist <- function(z){
+  return(FNN::KLx.divergence(y, z, k = 1))
+} 
 
 args_kl <- list(nthetas = nthetas,
                   rprior = rprior,
@@ -138,13 +138,12 @@ args_kl <- list(nthetas = nthetas,
                   discrepancy = kldist,
                   parameter_names = theta_names,
                   thetadim = length(theta_names),
-                  ydim = ncol(y),
-                  kernel = "uniform",
-                  epsilon = 0.1
+                  ydim = ncol(y)
                 )
 
 klabc_out <- sabc(args_kl, maxsimulation = maxsimulation)
 abc_df[index(4, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(klabc_out)[, theta_names]
+save(klabc_out, file = paste0(resultsprefix, "klabc_out.RData"))
 
 
 # save results
@@ -207,7 +206,7 @@ g6 <- ggplot(data = abc_df, aes(x = samples.delta, colour = methods, fill = meth
 gridExtra::grid.arrange(g1, g2, g3, g4, g5, g6, ncol = 3)
 dev.off()
 
-# pot realizations
+# plot realizations
 obs_df <- data.frame(time = blowfly[, 2], y = blowfly[, 1], lab = "real")
 posterior_means <- matrix(NA, nrow = length(method_names), ncol = length(theta_names))
 realizations_colours <- c(real = "grey50", "1" = "chocolate", "2" = "purple", "3" = "darkblue")
