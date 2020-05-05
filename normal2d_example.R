@@ -87,7 +87,7 @@ args_rej <- list(nthetas = nthetas,
                   ydim = ncol(y)
                 )
 
-rej_out <- sabc(args_rej, maxsimulation = maxsimulation)
+rej_out <- sabc(args_rej, maxsimulation = maxsimulation, savefile = paste0(resultsprefix, "rej_out.RData"))
 abc_df[index(1, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(rej_out)[, theta_names]
 
 
@@ -108,7 +108,7 @@ args_mmd <- list(nthetas = nthetas,
                   ydim = ncol(y)
                 )
 
-mmd_out <- sabc(args_mmd, maxsimulation = maxsimulation)
+mmd_out <- sabc(args_mmd, maxsimulation = maxsimulation, savefile = paste0(resultsprefix, "mmd_out.RData"))
 abc_df[index(2, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(mmd_out)[, theta_names]
 
 
@@ -131,7 +131,7 @@ args_wabc <- list(nthetas = nthetas,
                   ydim = ncol(y)
                 )
 
-wabc_out <- sabc(args_wabc, maxsimulation = maxsimulation)
+wabc_out <- sabc(args_wabc, maxsimulation = maxsimulation, savefile = paste0(resultsprefix, "wabc_out.RData"))
 abc_df[index(3, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(wabc_out)[, theta_names]
 
 
@@ -150,7 +150,7 @@ args_kl <- list(nthetas = nthetas,
                   ydim = ncol(y)
                 )
 
-klabc_out <- sabc(args_kl, maxsimulation= maxsimulation)
+klabc_out <- sabc(args_kl, maxsimulation= maxsimulation, savefile = paste0(resultsprefix, "klabc_out.RData"))
 abc_df[index(4, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(klabc_out)[, theta_names]
 
 
@@ -270,6 +270,31 @@ g1 <- ggplot(data.frame(y1 = y[, 1], y2 = y[, 2]),
       geom_vline(xintercept = theta_star$theta[4], linetype = 2) +
       geom_hline(yintercept = theta_star$theta[5], linetype = 2) +
       theme(legend.position = "none") 
+g1
+dev.off()
+
+
+# thresholds
+threshold_history <- rbind(
+                            cbind(method_names[1], rej_out$ncomputed, rej_out$threshold_history),
+                            cbind(method_names[2], mmd_out$ncomputed, mmd_out$threshold_history),
+                            cbind(method_names[3], wabc_out$ncomputed, wabc_out$threshold_history),
+                            cbind(method_names[4], klabc_out$ncomputed, klabc_out$threshold_history)
+                          )
+threshold_history <- data.frame(
+                                methods = threshold_history[, 1],
+                                nsimulations = as.numeric(threshold_history[, 2]),
+                                thresholds = as.numeric(threshold_history[, 3])
+                               )
+
+pdf(paste0(plotprefix, "thresholds.pdf"), height = 5, width = 10)
+g1 <- ggplot(data = threshold_history, aes(y = thresholds, x = nsimulations, colour = methods)) +
+        geom_line() +
+        geom_point() +
+        labs(x = "number of model simulations", y = "threshold") +
+        change_sizes(16, 20) +
+        add_legend(0.95, 0.95)
+g1
 dev.off()
 
 

@@ -83,7 +83,7 @@ args_rej <- list(nthetas = nthetas,
                   ydim = ncol(y)
                 )
 
-rej_out <- sabc(args_rej, maxsimulation = maxsimulation)
+rej_out <- sabc(args_rej, maxsimulation = maxsimulation, savefile = paste0(resultsprefix, "rej_out.RData"))
 abc_df[index(1, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(rej_out)[, theta_names]
 
 
@@ -104,7 +104,7 @@ args_mmd <- list(nthetas = nthetas,
                   ydim = ncol(y)
                 )
 
-mmd_out <- sabc(args_mmd, maxsimulation= maxsimulation)
+mmd_out <- sabc(args_mmd, maxsimulation= maxsimulation, savefile = paste0(resultsprefix, "mmd_out.RData"))
 abc_df[index(2, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(mmd_out)[, theta_names]
 
 
@@ -126,7 +126,7 @@ args_wabc <- list(nthetas = nthetas,
                   ydim = ncol(y)
                 )
 
-wabc_out <- sabc(args_wabc, maxsimulation= maxsimulation)
+wabc_out <- sabc(args_wabc, maxsimulation= maxsimulation, savefile = paste0(resultsprefix, "wabc_out.RData"))
 abc_df[index(3, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(wabc_out)[, theta_names]
 
 
@@ -145,7 +145,7 @@ args_kl <- list(nthetas = nthetas,
                   ydim = ncol(y)
                 )
 
-klabc_out <- sabc(args_kl, maxsimulation= maxsimulation)
+klabc_out <- sabc(args_kl, maxsimulation= maxsimulation, savefile = paste0(resultsprefix, "klabc_out.RData"))
 abc_df[index(4, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(klabc_out)[, theta_names]
 
 

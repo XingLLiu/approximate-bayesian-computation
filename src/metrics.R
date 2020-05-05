@@ -81,7 +81,7 @@ add_legend <- function(xpos, ypos)
   theme(
         legend.position = c(xpos, ypos),
         legend.justification = c("right", "top"),
-        legend.title=element_blank(),
+        legend.title = element_blank(),
         legend.key.size = unit(1.5, "line"),
         legend.text = element_text(size = 18)
         )
