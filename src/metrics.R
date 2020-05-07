@@ -89,9 +89,9 @@ add_legend <- function(xpos, ypos)
 
 
 # customize label sizes
-change_sizes <- function(test.size, title.size)
+change_sizes <- function(text.size, title.size)
 {
-  theme(axis.text = element_text(size = test.size),
+  theme(axis.text = element_text(size = text.size),
         axis.title = element_text(size = title.size, face = "bold"))
 }
 

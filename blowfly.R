@@ -6,16 +6,7 @@ source("src/soft_abc.R")
 source("src/sabc.R")
 source("src/blowfly/blowfly.R")
 set.seed(2020)
-# theta_star <- list(theta = c(29, 0.2, 260, 0.6, 0.3, 7))
 theta_names <- c("P", "delta", "N0", "sigma.d", "sigma.p", "tau")
-# theta_star_list <- list(P = theta_star$theta[1],
-#                         delta = theta_star$theta[2],
-#                         N0 = theta_star$theta[3],
-#                         sigma.d = theta_star$theta[4],
-#                         sigma.p = theta_star$theta[5],
-#                         tau = theta_star$theta[6]
-#                         )
-# hyperparams <- list(m = 1, tau = 2)
 nobservation <- 180
 nthetas <- 1024
 maxsimulation <- 5 * 10^6
@@ -83,7 +74,8 @@ save(rej_out, file = paste0(resultsprefix, "rej_out.RData"))
 
 # K2 ABC
 source("src/mmd/mmdsq_c.R")
-bandwidth <- median(apply(y, 1, l1norm))
+# bandwidth <- median(apply(y, 1, l1norm))
+bandwidth <- median(dist(y, method = "manhattan"))
 mmdsq <- function(z){ 
   return(mmdsq_c(y, z, bandwidth)) 
 }
@@ -153,14 +145,13 @@ abc_df <- read.csv(paste0(resultsprefix, "/abc_df.csv"))
 
 # plot results
 my_colours <- init_colours()
-pdf(paste0(plotprefix, "posterior_densities.pdf"), width = 14)
+pdf(paste0(plotprefix, "posterior_densities.pdf"), width = 18)
 g1 <- ggplot(data = abc_df, aes(x = samples.P, colour = methods, fill = methods)) +
         geom_density(alpha = 0.5) +
         labs(x = "P") +
         change_sizes(16, 20) +
         scale_color_manual(name = "", values = my_colours) +
         scale_fill_manual(name = "", values = my_colours) +
-        # geom_vline(xintercept = theta_star_list$P, linetype = 2) +
         theme(legend.position = "none") +
         add_legend(0.95, 0.95)
 g2 <- ggplot(data = abc_df, aes(x = samples.N0, colour = methods, fill = methods)) +
@@ -169,7 +160,6 @@ g2 <- ggplot(data = abc_df, aes(x = samples.N0, colour = methods, fill = methods
         change_sizes(16, 20) +
         scale_color_manual(name = "", values = my_colours) +
         scale_fill_manual(name = "", values = my_colours) +
-        # geom_vline(xintercept = theta_star_list$N0, linetype = 2) +
         theme(legend.position = "none") 
 g3 <- ggplot(data = abc_df, aes(x = samples.sigma.d, colour = methods, fill = methods)) +
         geom_density(alpha = 0.5) +
@@ -177,7 +167,6 @@ g3 <- ggplot(data = abc_df, aes(x = samples.sigma.d, colour = methods, fill = me
         change_sizes(16, 20) +
         scale_color_manual(name = "", values = my_colours) +
         scale_fill_manual(name = "", values = my_colours) +
-        # geom_vline(xintercept = theta_star_list$sigma.d, linetype = 2) +
         theme(legend.position = "none") 
 g4 <- ggplot(data = abc_df, aes(x = samples.sigma.p, colour = methods, fill = methods)) +
         geom_density(alpha = 0.5) +
@@ -185,7 +174,6 @@ g4 <- ggplot(data = abc_df, aes(x = samples.sigma.p, colour = methods, fill = me
         change_sizes(16, 20) +
         scale_color_manual(name = "", values = my_colours) +
         scale_fill_manual(name = "", values = my_colours) +
-        # geom_vline(xintercept = theta_star_list$sigma.p, linetype = 2) +
         theme(legend.position = "none") 
 g5 <- ggplot(data = abc_df, aes(x = samples.tau, colour = methods, fill = methods)) +
         geom_density(alpha = 0.5) +
@@ -193,7 +181,6 @@ g5 <- ggplot(data = abc_df, aes(x = samples.tau, colour = methods, fill = method
         change_sizes(16, 20) +
         scale_color_manual(name = "", values = my_colours) +
         scale_fill_manual(name = "", values = my_colours) +
-        # geom_vline(xintercept = theta_star_list$tau, linetype = 2) +
         theme(legend.position = "none") 
 g6 <- ggplot(data = abc_df, aes(x = samples.delta, colour = methods, fill = methods)) +
         geom_density(alpha = 0.5) +
@@ -201,7 +188,6 @@ g6 <- ggplot(data = abc_df, aes(x = samples.delta, colour = methods, fill = meth
         change_sizes(16, 20) +
         scale_color_manual(name = "", values = my_colours) +
         scale_fill_manual(name = "", values = my_colours) +
-        # geom_vline(xintercept = theta_star_list$delta, linetype = 2) +
         theme(legend.position = "none") 
 gridExtra::grid.arrange(g1, g2, g3, g4, g5, g6, ncol = 3)
 dev.off()
@@ -219,7 +205,7 @@ for (i in 1:(length(method_names) - 1)){
           geom_line(size = 1.2) +
           scale_color_manual(name = "", values = realizations_colours) +
           labs(x = "time", y = "number of blowflies") +
-          change_sizes(16, 20) +
+          change_sizes(28, 36) +
           theme(legend.position = "none") 
   ggsave(plt, file = paste0(plotprefix, "realizations_", method_names[i], ".pdf"), width = 14)
 }
@@ -240,6 +226,47 @@ for (i in 2:(length(method_names) - 1)){
 }
 
 
+# thresholds
+threshold_history <- rbind(
+                            cbind(method_names[1], cumsum(rej_out$ncomputed), rej_out$threshold_history),
+                            cbind(method_names[2], cumsum(mmd_out$ncomputed), mmd_out$threshold_history),
+                            cbind(method_names[3], cumsum(wabc_out$ncomputed), wabc_out$threshold_history)
+                          )
+threshold_history <- data.frame(
+                                methods = threshold_history[, 1],
+                                nsimulations = as.numeric(threshold_history[, 2]),
+                                thresholds = as.numeric(threshold_history[, 3])
+                               )
 
+draw_thresholds <- function(method){
+  g1 <- ggplot(data = threshold_history %>% filter(methods == method), 
+               aes(y = thresholds, x = nsimulations)
+              ) +
+        geom_line(color = my_colours[method]) +
+        geom_point(color = my_colours[method]) +
+        labs(x = "number of model simulations", y = "threshold") +
+        xlim(0, maxsimulation * 1.1) +
+        change_sizes(16, 20) +
+        add_legend(0.95, 0.95)
+  return(g1)
+}
+
+pdf(paste0(plotprefix, "thresholds.pdf"), height = 5, width = 24)
+g1 <- draw_thresholds(method_names[1])
+g2 <- draw_thresholds(method_names[2])
+g3 <- draw_thresholds(method_names[3])
+gridExtra::grid.arrange(g1, g2, g3, nrow = 1)
+dev.off()
+
+
+# computational times
+ztemp <- simulate(colMeans(filter(abc_df, methods == "Wasserstein")[, 2:7]))
+print("Computational times of one evaluation:")
+microbenchmark::microbenchmark(
+                                eucdiscrep(ztemp),
+                                mmdsq(ztemp),
+                                wdistance(ztemp),
+                                times = 1000
+                              )
 
 

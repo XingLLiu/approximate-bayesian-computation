@@ -114,13 +114,13 @@ args_rej <- list(nthetas = nthetas,
                   ydim = ncol(y)
                 )
 
-rej_out <- sabc(args_rej, maxsimulation = maxsimulation)
+rej_out <- sabc(args_rej, maxsimulation = maxsimulation, savefile = paste0(resultsprefix, "rej_out.RData"))
 abc_df[index(1, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(rej_out)[, theta_names]
 
 
 # K2 ABC
 source("src/mmd/mmdsq_c.R")
-bandwidth <- median(apply(y, 1, l1norm))
+bandwidth <- median(dist(y, method = "manhattan"))
 mmdsq <- function(z){ 
   return(mmdsq_c(y, z, bandwidth)) 
 }
@@ -135,7 +135,7 @@ args_mmd <- list(nthetas = nthetas,
                   ydim = ncol(y)
                 )
 
-mmd_out <- sabc(args_mmd, maxsimulation = maxsimulation)
+mmd_out <- sabc(args_mmd, maxsimulation = maxsimulation, savefile = paste0(resultsprefix, "mmd_out.RData"))
 abc_df[index(2, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(mmd_out)[, theta_names]
 
 
@@ -157,7 +157,7 @@ args_wabc <- list(nthetas = nthetas,
                   ydim = ncol(y)
                 )
 
-wabc_out <- sabc(args_wabc, maxsimulation= maxsimulation)
+wabc_out <- sabc(args_wabc, maxsimulation= maxsimulation, savefile = paste0(resultsprefix, "wabc_out.RData"))
 abc_df[index(3, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(wabc_out)[, theta_names]
 
 
@@ -176,7 +176,7 @@ args_kl <- list(nthetas = nthetas,
                   ydim = ncol(y)
                 )
 
-klabc_out <- sabc(args_kl, maxsimulation= maxsimulation)
+klabc_out <- sabc(args_kl, maxsimulation= maxsimulation, savefile = paste0(resultsprefix, "klabc_out.RData"))
 abc_df[index(4, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(klabc_out)[, theta_names]
 
 
@@ -186,7 +186,7 @@ abc_df <- read.csv(paste0(resultsprefix, "abc_df.csv"))
 
 # plot results
 my_colours <- init_colours()
-pdf(paste0(plotprefix, "gandk1d_eg.pdf"), width = 14)
+pdf(paste0(plotprefix, "gandk1d_eg.pdf"), width = 18)
 g1 <- ggplot(mhout.df, aes(x = X.1, fill = "Posterior", colour = "Posterior"), alpha = 0.5) + 
         geom_density() + 
         geom_vline(xintercept = theta_star_vec[1], linetype = 2)
@@ -232,3 +232,49 @@ g4 <- g4 + geom_density(data = abc_df, aes(x = samples.k, fill = methods, colour
 gridExtra::grid.arrange(g1, g2, g3, g4, ncol = 2)
 dev.off()
 
+
+# thresholds
+threshold_history <- rbind(
+                            cbind(method_names[1], cumsum(rej_out$ncomputed), rej_out$threshold_history),
+                            cbind(method_names[2], cumsum(mmd_out$ncomputed), mmd_out$threshold_history),
+                            cbind(method_names[3], cumsum(wabc_out$ncomputed[-1]), wabc_out$threshold_history[-1]),
+                            cbind(method_names[4], cumsum(klabc_out$ncomputed), klabc_out$threshold_history)
+                          )
+threshold_history <- data.frame(
+                                methods = threshold_history[, 1],
+                                nsimulations = as.numeric(threshold_history[, 2]),
+                                thresholds = as.numeric(threshold_history[, 3])
+                               )
+
+draw_thresholds <- function(method){
+  g1 <- ggplot(data = threshold_history %>% filter(methods == method), 
+               aes(y = thresholds, x = nsimulations)
+              ) +
+        geom_line(color = my_colours[method]) +
+        geom_point(color = my_colours[method]) +
+        labs(x = "number of model simulations", y = "threshold") +
+        xlim(0, maxsimulation * 1.15) +
+        change_sizes(16, 20) +
+        add_legend(0.95, 0.95)
+  return(g1)
+}
+
+pdf(paste0(plotprefix, "thresholds.pdf"), width = 18)
+g1 <- draw_thresholds(method_names[1])
+g2 <- draw_thresholds(method_names[2])
+g3 <- draw_thresholds(method_names[3])
+g4 <- draw_thresholds(method_names[4])
+gridExtra::grid.arrange(g1, g2, g3, g4, ncol = 2)
+dev.off()
+
+
+# computational times
+ztemp <- simulate(theta_star_vec)
+print("Computational times of one evaluation:")
+microbenchmark::microbenchmark(
+                                eucdiscrep(ztemp),
+                                mmdsq(ztemp),
+                                wdistance(ztemp),
+                                kldist(ztemp),
+                                times = 1000
+                              )

@@ -89,7 +89,7 @@ rej_out <- wsmc_continue(rej_out,
 
 # K2 ABC
 source("src/mmd/mmdsq_c.R")
-bandwidth <- median(apply(y, 1, l1norm))
+bandwidth <- median(dist(y, method = "manhattan"))
 mmdsq <- function(z){ 
   return(mmdsq_c(y, z, bandwidth)) 
 }
@@ -171,7 +171,7 @@ abc_df <- read.csv(paste0(resultsprefix, "/abc_df.csv"))
 
 # plot results
 my_colours <- init_colours()
-pdf(paste0(plotprefix, "posterior_densities.pdf"), width = 14)
+pdf(paste0(plotprefix, "posterior_densities_known_params.pdf"), width = 18)
 g1 <- ggplot(data = abc_df, aes(x = samples.P, colour = methods, fill = methods)) +
         geom_density(alpha = 0.5) +
         labs(x = "P") +

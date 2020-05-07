@@ -33,7 +33,7 @@ compare_distances_fun <- function(i){
 
   w1 <- rep(1/nobservation, nobservation)
   w2 <- rep(1/nobservation, nobservation)
-  bandwidth <- median(apply(y, 1, l1norm))
+  bandwidth <- median(dist(y, method = "manhattan"))
   for (j in 1:length(theta_vec)){
     C <- cost_matrix_L2(t(y), t(matrix(obs_fake[, , j], ncol = ydim[i])))
     dist$MMD[j] <- mmdsq_c(y, matrix(obs_fake[, , j], ncol = ydim[i]), bandwidth)
@@ -133,7 +133,7 @@ for (i in (2:length(ydim))){
                     )
   w1 <- rep(1/nobservation, nobservation)
   w2 <- rep(1/nobservation, nobservation)
-  bandwidth <- median(apply(y, 1, l1norm))
+  bandwidth <- median(dist(y, method = "manhattan"))
   C <- cost_matrix_L2(t(y), t(matrix(z, ncol = ydim[i])))
   microbenchmark::microbenchmark(
                                 "MMD" = mmdsq_c(y, matrix(z, ncol = ydim[i]), bandwidth),

@@ -93,7 +93,7 @@ abc_df[index(1, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(rej_out)[, th
 
 # K2 ABC
 source("src/mmd/mmdsq_c.R")
-bandwidth <- median(apply(y, 1, l1norm))
+bandwidth <- median(dist(y, method = "manhattan"))
 mmdsq <- function(z){ 
   return(mmdsq_c(y, z, bandwidth)) 
 }
@@ -161,7 +161,7 @@ abc_df <- read.csv(paste0(resultsprefix, "abc_df.csv"))
 
 # plot results
 my_colours <- init_colours()
-pdf(paste0(plotprefix, "posterior_densities.pdf"), width = 14)
+pdf(paste0(plotprefix, "posterior_densities.pdf"), width = 18)
 g1 <- ggplot(data = abc_df, aes(x = samples.p, colour = methods, fill = methods)) +
         geom_density(alpha = 0.5) +
         labs(x = "p") +
@@ -276,10 +276,10 @@ dev.off()
 
 # thresholds
 threshold_history <- rbind(
-                            cbind(method_names[1], rej_out$ncomputed, rej_out$threshold_history),
-                            cbind(method_names[2], mmd_out$ncomputed, mmd_out$threshold_history),
-                            cbind(method_names[3], wabc_out$ncomputed, wabc_out$threshold_history),
-                            cbind(method_names[4], klabc_out$ncomputed, klabc_out$threshold_history)
+                            cbind(method_names[1], cumsum(rej_out$ncomputed), rej_out$threshold_history),
+                            cbind(method_names[2], cumsum(mmd_out$ncomputed), mmd_out$threshold_history),
+                            cbind(method_names[3], cumsum(wabc_out$ncomputed), wabc_out$threshold_history),
+                            cbind(method_names[4], cumsum(klabc_out$ncomputed), klabc_out$threshold_history)
                           )
 threshold_history <- data.frame(
                                 methods = threshold_history[, 1],
@@ -287,14 +287,25 @@ threshold_history <- data.frame(
                                 thresholds = as.numeric(threshold_history[, 3])
                                )
 
-pdf(paste0(plotprefix, "thresholds.pdf"), height = 5, width = 10)
-g1 <- ggplot(data = threshold_history, aes(y = thresholds, x = nsimulations, colour = methods)) +
-        geom_line() +
-        geom_point() +
+draw_thresholds <- function(method){
+  g1 <- ggplot(data = threshold_history %>% filter(methods == method), 
+               aes(y = thresholds, x = nsimulations)
+              ) +
+        geom_line(color = my_colours[method]) +
+        geom_point(color = my_colours[method]) +
         labs(x = "number of model simulations", y = "threshold") +
+        xlim(0, maxsimulation * 1.15) +
         change_sizes(16, 20) +
         add_legend(0.95, 0.95)
-g1
+  return(g1)
+}
+
+pdf(paste0(plotprefix, "thresholds.pdf"), width = 18)
+g1 <- draw_thresholds(method_names[1])
+g2 <- draw_thresholds(method_names[2])
+g3 <- draw_thresholds(method_names[3])
+g4 <- draw_thresholds(method_names[4])
+gridExtra::grid.arrange(g1, g2, g3, g4, ncol = 2)
 dev.off()
 
 
