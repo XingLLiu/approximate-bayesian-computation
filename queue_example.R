@@ -209,7 +209,7 @@ draw_thresholds <- function(method){
         geom_line(color = my_colours[method]) +
         geom_point(color = my_colours[method]) +
         labs(x = "number of model simulations", y = "threshold") +
-        xlim(0, maxsimulation * 1.15) +
+        xlim(0, maxsimulation * 1.2) +
         change_sizes(16, 20) +
         add_legend(0.95, 0.95)
   return(g1)

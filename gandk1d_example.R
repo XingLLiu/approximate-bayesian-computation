@@ -184,6 +184,7 @@ abc_df[index(4, nthetas), 2:ncol(abc_df)] <- sabc_get_last_samples(klabc_out)[, 
 write.csv(abc_df, paste0(resultsprefix, "abc_df.csv"), row.names = FALSE)
 abc_df <- read.csv(paste0(resultsprefix, "abc_df.csv"))
 
+
 # plot results
 my_colours <- init_colours()
 pdf(paste0(plotprefix, "gandk1d_eg.pdf"), width = 18)
@@ -253,7 +254,7 @@ draw_thresholds <- function(method){
         geom_line(color = my_colours[method]) +
         geom_point(color = my_colours[method]) +
         labs(x = "number of model simulations", y = "threshold") +
-        xlim(0, maxsimulation * 1.15) +
+        xlim(0, maxsimulation * 1.05) +
         change_sizes(16, 20) +
         add_legend(0.95, 0.95)
   return(g1)

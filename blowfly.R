@@ -74,7 +74,6 @@ save(rej_out, file = paste0(resultsprefix, "rej_out.RData"))
 
 # K2 ABC
 source("src/mmd/mmdsq_c.R")
-# bandwidth <- median(apply(y, 1, l1norm))
 bandwidth <- median(dist(y, method = "manhattan"))
 mmdsq <- function(z){ 
   return(mmdsq_c(y, z, bandwidth)) 
@@ -245,7 +244,7 @@ draw_thresholds <- function(method){
         geom_line(color = my_colours[method]) +
         geom_point(color = my_colours[method]) +
         labs(x = "number of model simulations", y = "threshold") +
-        xlim(0, maxsimulation * 1.1) +
+        xlim(0, maxsimulation * 1.2) +
         change_sizes(16, 20) +
         add_legend(0.95, 0.95)
   return(g1)

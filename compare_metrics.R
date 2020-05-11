@@ -124,8 +124,8 @@ for (i in (1:length(ydim))){
 
 
 # compare computational times
-for (i in (2:length(ydim))){
-  set.seed(2020)
+for (i in (1:length(ydim))){
+  set.seed(i)
   y <- fast_rmvnorm(nobservation, mean = rep(0, ydim[i]), covariance = theta0 * diag(1, ydim[i]))
   z <- fast_rmvnorm(nobservation, 
                     mean = rep(0, ydim[i]),
@@ -140,4 +140,5 @@ for (i in (2:length(ydim))){
                                 "Wasserstein" = exact_transport_given_C(w1, w2, C, p = 1),
                                 "KL.divergence" = FNN::KLx.divergence(y, matrix(z, ncol = ydim[i]), k = 1)[1]
                                 )
+  print(sprintf("Done dim %s", i))
 }
